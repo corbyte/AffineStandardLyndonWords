@@ -26,7 +26,7 @@ class word:
     def toWeights(self,l):
         weights = np.zeros(l,dtype=int)
         for i in self.string:
-            weights[i.index] += 1
+            weights[i.rootIndex] += 1
         return weights
     def __init__(self, wordArray):
         self.string = np.array(wordArray,dtype=letter)
@@ -44,9 +44,9 @@ class word:
         return True
     def __lt__(self,other):
         for i in range(min(len(self.string),len(other.string))):
-            if(self.string[i] > other.string[i]):
-                return False
-        if(len(self.string) <= len(other.string)):
+            if(self.string[i] < other.string[i]):
+                return True
+        if(len(self.string) < len(other.string)):
             return True
         return False
     def __le__(self,other):
@@ -98,7 +98,10 @@ class standardLyndonWords:
                     potentialOptions.append(j + other)
         if(len(self.arr) < weight):
             self.arr.append([])
-        m = max(potentialOptions)
+        m = potentialOptions[0]
+        for i in potentialOptions:
+            if m < i:
+                m = i
         self.arr[weight-1].append(m)
         return m
 def parseWord(s:str):
@@ -122,10 +125,17 @@ def Agroup():
     print("Enter size:")
     size = int(input())
     ordered = np.empty(size,dtype=letter)
-    for i in range(size):
-        print(f"Enter root index for {i} ordered element")
-        index = input()
-        ordered[i]= letter(index,int(index))
+    print("Standard order [y/n]:")
+    so = input()
+    match so:
+        case "y" | "Y":
+            ordered = [letter(str(i),i) for i in range(1,size)]
+            ordered.append(letter("0",0))
+        case _:
+            for i in range(size):
+                print(f"Enter root index for {i} ordered element")
+                index = input()
+                ordered[i]= letter(index,int(index))
     ordering = letterOrdering(ordered)
     sLyndonWords = standardLyndonWords(ordering)
     for i in range(2,size+1):
