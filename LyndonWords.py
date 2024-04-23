@@ -31,10 +31,7 @@ class word:
     def __init__(self, wordArray):
         self.string = np.array(wordArray,dtype=letter)
     def __str__(self):
-        k = ""
-        for i in self.string:
-            k += i.value
-        return k
+        return ','.join(str(i) for i in self.string)
     def __eq__(self,other):
         if(len(self.string) != len(other.string)):
             return False
@@ -46,6 +43,8 @@ class word:
         for i in range(min(len(self.string),len(other.string))):
             if(self.string[i] < other.string[i]):
                 return True
+            if(self.string[i] > other.string[i]):
+                return False
         if(len(self.string) < len(other.string)):
             return True
         return False
