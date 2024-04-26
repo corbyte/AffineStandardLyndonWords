@@ -28,8 +28,10 @@ class word:
         for i in self.string:
             weights[i.rootIndex] += 1
         return weights
-    def __init__(self, wordArray):
+    #Maybe change to sparse matrix
+    def __init__(self, wordArray,matrix=None):
         self.string = np.array(wordArray,dtype=letter)
+        self.matrix = None
     def __str__(self):
         return ','.join(str(i) for i in self.string)
     def __eq__(self,other):
@@ -67,6 +69,8 @@ class letterOrdering:
 class standardLyndonWords:
     arr = []
     ordering:letterOrdering
+    def commutator(A,B):
+        return np.add(np.matmul(A, B) , np.matmul(B, A))
     def __init__(self, ordering):
         self.arr.append([word([i]) for i in ordering.letterOrdering])
         self.ordering = ordering
@@ -76,7 +80,7 @@ class standardLyndonWords:
             if(np.all(i.toWeights(len(self.ordering.letterOrdering)) == combination)):
                 return i
         return None
-    def genWord(self, combinations):
+    def genWord(self, combinations,affine=False):
         weight = sum(combinations)
         potentialOptions = []
         if (weight > len(self.arr)+1):
@@ -111,16 +115,16 @@ def parseWord(s:str):
         if(s[i]<rightFactor[0]):
             return
 def main():
-    print("Select group:")
+    print("Select type:")
     print("A")
     group = input()
     match group:
         case "A":
-            Agroup()
+            Atype()
         case "a":
-            Agroup()
+            Atype()
 
-def Agroup():
+def Atype(affine=False):
     print("Enter size:")
     size = int(input())
     ordered = np.empty(size,dtype=letter)
@@ -128,13 +132,14 @@ def Agroup():
     so = input()
     match so:
         case "y" | "Y":
-            ordered = [letter(str(i),i) for i in range(1,size)]
-            ordered.append(letter("0",0))
+            ordered = [letter(str(i),i) for i in range(1,size+1)]
+            if(affine):
+                ordered.append(letter("0",0))
         case _:
-            for i in range(size):
+            for i in range(1,size+1):
                 print(f"Enter root index for {i} ordered element")
                 index = input()
-                ordered[i]= letter(index,int(index))
+                ordered[i-1]= letter(index,int(index))
     ordering = letterOrdering(ordered)
     sLyndonWords = standardLyndonWords(ordering)
     for i in range(2,size+1):
@@ -143,5 +148,15 @@ def Agroup():
             for k in range(j,j+i):
                 comb[k] = 1
             print(sLyndonWords.genWord(comb))
+    return sLyndonWords
+def genAtype(n:int,ordering:letterOrdering,affine=False):
+    sLyndonWords = standardLyndonWords(ordering)
+    for i in range(2,n+1):
+        for j in range(0,n - i + 1):
+            comb = np.zeros(n,dtype=int)
+            for k in range(j,j+i):
+                comb[k] = 1
+            sLyndonWords.genWord(comb)
+    return sLyndonWords
 if __name__ == '__main__':
     main()
