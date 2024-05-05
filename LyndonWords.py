@@ -3,9 +3,9 @@ class letter:
     index:int
     value:str
     rootIndex:int
-    def __init__(self, v:str="",root:int=0):
+    def __init__(self, v:str="",rootIndex:int=0):
         self.value = v
-        self.rootIndex = root
+        self.rootIndex = rootIndex
     def set_index(self, i:int):
         self.index = i
     def __str__(self):
@@ -23,15 +23,13 @@ class letter:
     def __ge__(self,other):
         return self.index >= other.index
 class word:
-    def toWeights(self,l):
-        weights = np.zeros(l,dtype=int)
-        for i in self.string:
-            weights[i.rootIndex] += 1
-        return weights
     #Maybe change to sparse matrix
-    def __init__(self, wordArray,matrix=None):
+    def __init__(self, wordArray,l,matrix=None):
         self.string = np.array(wordArray,dtype=letter)
         self.matrix = None
+        self.weights = np.zeros(l,dtype=int)
+        for i in self.string:
+            self.weights[i.index] += 1
     def __str__(self):
         return ','.join(str(i) for i in self.string)
     def __eq__(self,other):
@@ -59,7 +57,7 @@ class word:
     def __ne__(self,other):
         return not (self == other)
     def __add__(self,other):
-        return word(np.concatenate((self.string,other.string),dtype=word)) 
+        return word(np.concatenate((self.string,other.string),dtype=word),len(self.weights)) 
 class letterOrdering:
     letterOrdering:list[letter]
     def __init__(self, letterOrdering):
@@ -72,12 +70,12 @@ class standardLyndonWords:
     def commutator(A,B):
         return np.add(np.matmul(A, B) , np.matmul(B, A))
     def __init__(self, ordering):
-        self.arr.append([word([i]) for i in ordering.letterOrdering])
+        self.arr.append([word([i],len(ordering.letterOrdering)) for i in ordering.letterOrdering])
         self.ordering = ordering
     def getWord(self, combination):
         sameLengths = self.arr[sum(combination)-1]
         for i in sameLengths:
-            if(np.all(i.toWeights(len(self.ordering.letterOrdering)) == combination)):
+            if(np.all(i.weights == combination)):
                 return i
         return None
     def genWord(self, combinations,affine=False):
@@ -88,7 +86,7 @@ class standardLyndonWords:
         for i in range(1,weight//2 + 1):
             minlen = self.arr[i-1]
             for j in minlen:
-                diff = list(map(lambda a, b: a-b, combinations,j.toWeights(len(self.ordering.letterOrdering))))
+                diff = list(map(lambda a, b: a-b, combinations,j.weights))
                 if(min(diff) >= 0):
                     other = self.getWord(diff)
                     if other is None:
@@ -101,12 +99,12 @@ class standardLyndonWords:
                     potentialOptions.append(j + other)
         if(len(self.arr) < weight):
             self.arr.append([])
-        m = potentialOptions[0]
+        match = potentialOptions[0]
         for i in potentialOptions:
-            if m < i:
-                m = i
-        self.arr[weight-1].append(m)
-        return m
+            if match < i:
+                match = i
+        self.arr[weight-1].append(match)
+        return match
 def parseWord(s:str):
     if(len(s) == 1):
         return s
@@ -117,14 +115,18 @@ def parseWord(s:str):
 def main():
     print("Select type:")
     print("A")
-    group = input()
-    match group:
-        case "A":
-            Atype()
-        case "a":
-            Atype()
+    type = input()
+    affineCount=0
+    print("Affine?(y/n)")
+    match input():
+        case "y"|"Y":
+            print("Enter Affine Count:")
+            affineCount = int(input())
+    match type:
+        case "A"|"a":
+            Atype(affineCount)
 
-def Atype(affine=False):
+def Atype(affineCount=0):
     print("Enter size:")
     size = int(input())
     ordered = np.empty(size,dtype=letter)
@@ -132,31 +134,53 @@ def Atype(affine=False):
     so = input()
     match so:
         case "y" | "Y":
-            ordered = [letter(str(i),i) for i in range(1,size+1)]
-            if(affine):
+            if(affineCount == 0):
+                ordered = [letter(str(i,i)) for i in range(1,size)]
                 ordered.append(letter("0",0))
+            else:
+                ordered = [letter(str(i),i) for i in range(1,size+1)]
         case _:
             for i in range(1,size+1):
                 print(f"Enter root index for {i} ordered element")
                 index = input()
                 ordered[i-1]= letter(index,int(index))
     ordering = letterOrdering(ordered)
+    sLyndonWords = genAtype(size,ordering,affineCount,printIt=True)
+    return sLyndonWords
+def genAtype(size:int,ordering:letterOrdering,printIt=False):
     sLyndonWords = standardLyndonWords(ordering)
     for i in range(2,size+1):
         for j in range(0,size - i + 1):
             comb = np.zeros(size,dtype=int)
             for k in range(j,j+i):
                 comb[k] = 1
-            print(sLyndonWords.genWord(comb))
+            if printIt:
+                print(sLyndonWords.genWord(comb))
+            else:
+                sLyndonWords.genWord(comb)
     return sLyndonWords
-def genAtype(n:int,ordering:letterOrdering,affine=False):
+def genATypeAffine(size:int,ordering:letterOrdering,affineCount,printIt=False):
     sLyndonWords = standardLyndonWords(ordering)
-    for i in range(2,n+1):
-        for j in range(0,n - i + 1):
-            comb = np.zeros(n,dtype=int)
-            for k in range(j,j+i):
-                comb[k] = 1
-            sLyndonWords.genWord(comb)
+    delta = np.ones(size,dtype=int)
+    for deltaCount in range(affineCount+1):
+        for length in range(1,size):
+            if(length == 1 and deltaCount == 0):
+                continue
+            for start in range(0,size):
+                if(start + length < size):
+                    comb = np.zeros(size,dtype=int)
+                    for k in range(length):
+                        comb[start+k] = 1
+                else:
+                    comb=np.ones(size,dtype=int)
+                    startprime = start+length -size
+                    for k in range(size-length):
+                        comb[startprime+k] = 0
+                comb = comb + deltaCount*delta
+            if printIt:
+                print(sLyndonWords.genWord(comb,affine=True))
+            else:
+                sLyndonWords.genWord(comb,affine=True)
     return sLyndonWords
 if __name__ == '__main__':
     main()
