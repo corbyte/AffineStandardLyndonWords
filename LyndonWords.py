@@ -1,4 +1,5 @@
 import numpy as np
+import argparse
 class letter:
     index:int
     value:str
@@ -113,34 +114,28 @@ def parseWord(s:str):
         if(s[i]<rightFactor[0]):
             return
 def main():
-    print("Select type:")
-    print("A")
-    print("C")
-    type = input()
-    affineCount=0
-    print("Affine?(y/n)")
-    match input():
-        case "y"|"Y":
-            print("Enter Affine Count:")
-            affineCount = int(input())
-    print("Enter size:")
-    size = int(input())
-    print("Standard order [y/n]:")
-    so = input()
-    ordered = np.empty(size,dtype=letter)
-    match so:
-        case "y" | "Y":
-            if(affineCount != 0):
-                ordered = [letter(str(i),i) for i in range(1,size)]
-                ordered.append(letter("0",0))
-            else:
-                ordered = [letter(str(i),i) for i in range(1,size+1)]
-        case _:
-            for i in range(1,size+1):
-                print(f"Enter root index for {i} ordered element")
-                index = input()
-                ordered[i-1]= letter(index,int(index))
-    ordering = letterOrdering(ordered)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("type",choices=["C","c","A","a"])
+    parser.add_argument("size",type=int)
+    parser.add_argument("-o","--order", nargs='+', type =int)
+    parser.add_argument('-a','--affine_count',type=int, default=0)
+    args = parser.parse_args()
+    #args = parser.parse_args(['C','4'])
+    type = args.type
+    affineCount = args.affine_count
+    size = args.size
+    orderInput = args.order
+    # parameter input: type affinecount size stanard order y/n order if n
+    order = []
+    if(orderInput is None):
+        if(affineCount!= 0):
+            order = [letter(str(i),i) for i in range(1,size+1)]
+        else:
+            order = [letter(str(i),i) for i in range(1,size)]
+            order.append(letter("0",0))
+    else:
+        order = [letter(str(i),i) for i in orderInput]
+    ordering = letterOrdering(order)
     match type:
         case "A"|"a":
             Atype(size,ordering,affineCount)
@@ -230,5 +225,5 @@ def genATypeAffine(size:int,ordering:letterOrdering,affineCount,printIt=False):
             else:
                 sLyndonWords.genWord(comb,affine=True)
     return sLyndonWords
-if __name__ == '__main__':
+if __name__ == '__main__':    
     main()
