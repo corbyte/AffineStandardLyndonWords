@@ -29,7 +29,7 @@ class word:
         self.matrix = None
         self.weights = np.zeros(l,dtype=int)
         for i in self.string:
-            self.weights[i.index] += 1
+            self.weights[i.rootIndex-1] += 1
     def __str__(self):
         return ','.join(str(i) for i in self.string)
     def __eq__(self,other):
@@ -115,6 +115,7 @@ def parseWord(s:str):
 def main():
     print("Select type:")
     print("A")
+    print("C")
     type = input()
     affineCount=0
     print("Affine?(y/n)")
@@ -122,20 +123,15 @@ def main():
         case "y"|"Y":
             print("Enter Affine Count:")
             affineCount = int(input())
-    match type:
-        case "A"|"a":
-            Atype(affineCount)
-
-def Atype(affineCount=0):
     print("Enter size:")
     size = int(input())
-    ordered = np.empty(size,dtype=letter)
     print("Standard order [y/n]:")
     so = input()
+    ordered = np.empty(size,dtype=letter)
     match so:
         case "y" | "Y":
-            if(affineCount == 0):
-                ordered = [letter(str(i,i)) for i in range(1,size)]
+            if(affineCount != 0):
+                ordered = [letter(str(i),i) for i in range(1,size)]
                 ordered.append(letter("0",0))
             else:
                 ordered = [letter(str(i),i) for i in range(1,size+1)]
@@ -145,14 +141,66 @@ def Atype(affineCount=0):
                 index = input()
                 ordered[i-1]= letter(index,int(index))
     ordering = letterOrdering(ordered)
-    sLyndonWords = genAtype(size,ordering,affineCount,printIt=True)
+    match type:
+        case "A"|"a":
+            Atype(size,ordering,affineCount)
+        case "C"|"c":
+            Ctype(size,ordering,affineCount)
+
+def Ctype(size,ordering,affineCount=0,printIt=False):
+    return genCTypeFinite(size,ordering,printIt=True)
+def Atype(size,ordering,affineCount=0):
+    sLyndonWords = genATypeFinite(size,ordering,printIt=True)
     return sLyndonWords
-def genAtype(size:int,ordering:letterOrdering,printIt=False):
+def genCTypeFinite(size:int,ordering:letterOrdering,printIt=False):
     sLyndonWords = standardLyndonWords(ordering)
-    for i in range(2,size+1):
-        for j in range(0,size - i + 1):
+    for length in range(2,2*size):
+        if(length <= 2*size -2):
+            #i+j
             comb = np.zeros(size,dtype=int)
-            for k in range(j,j+i):
+            for i in range(size-min(length,size),size):
+                comb[i] = 1
+            oneIndex = size-min(length,size)
+            twoIndex = size-1
+            while(sum(comb) < length):
+                twoIndex -= 1
+                comb[twoIndex] = 2
+            while(oneIndex < twoIndex):
+                if(printIt):
+                    print(sLyndonWords.genWord(comb))
+                else:
+                    sLyndonWords.genWord(comb)
+                twoIndex -= 1
+                comb[twoIndex] = 2
+                comb[oneIndex] = 0
+                oneIndex+=1
+        #i-j
+        if(length < size):
+            for start in range(0,size-length):
+                comb = np.zeros(size,dtype=int)
+                for k in range(start,start+length):
+                    comb[k] =1
+                if printIt:
+                    print(sLyndonWords.genWord(comb))
+                else:
+                    sLyndonWords.genWord(comb)
+        #2i
+        if(length % 2 == 1):
+            comb=np.zeros(size,dtype=int)
+            comb[-1] = 1
+            for k in range(size-2,size-2-length//2,-1):
+                comb[k] = 2
+            if printIt:
+                print(sLyndonWords.genWord(comb))
+            else:
+                sLyndonWords.genWord(comb)
+    return sLyndonWords
+def genATypeFinite(size:int,ordering:letterOrdering,printIt=False):
+    sLyndonWords = standardLyndonWords(ordering)
+    for length in range(2,size+1):
+        for start in range(0,size - length + 1):
+            comb = np.zeros(size,dtype=int)
+            for k in range(start,start+length):
                 comb[k] = 1
             if printIt:
                 print(sLyndonWords.genWord(comb))
