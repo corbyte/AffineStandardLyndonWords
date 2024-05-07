@@ -143,7 +143,7 @@ class standardLyndonWords:
             while(len(liset) < topn):
                 #change to only use non-zero matrix entries
                 liprime = liset + [potentialOptions[index].matrix[0].toarray().flatten()]
-                if(np.linalg.matrix_rank(np.vstack(liprime)) == topn):
+                if(np.linalg.matrix_rank(np.vstack(liprime)) == len(liprime)):
                     liset = liprime
                     liPotentialOptions.append(potentialOptions[index])
                 index += 1
@@ -162,8 +162,8 @@ def main():
     parser.add_argument("size",type=int)
     parser.add_argument("-o","--order", nargs='+', type =int)
     parser.add_argument('-a','--affine_count',type=int, default=0)
-    #args = parser.parse_args()
-    args = parser.parse_args(['A','3','-a','3'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['A','2','-a','5'])
     type = args.type
     affineCount = args.affine_count
     size = args.size
@@ -276,7 +276,7 @@ def genATypeAffine(size:int,ordering:letterOrdering,affineCount,printIt=False):
                     for k in range(size-length):
                         comb[startprime+k] = 0
                 comb = comb + deltaCount*delta
-                if(length == size):
+                if(length == size and size != 2):
                     if printIt:
                         for i in sLyndonWords.genWord(comb,affine=True,topn=size-1):
                             print(i)
