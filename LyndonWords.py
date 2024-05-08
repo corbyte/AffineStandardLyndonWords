@@ -158,12 +158,12 @@ def parseWord(s:str):
             return
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("type",choices=["C","c","A","a"])
+    parser.add_argument("type",choices=["C","c","A","a","b","B"])
     parser.add_argument("size",type=int)
     parser.add_argument("-o","--order", nargs='+', type =int)
     parser.add_argument('-a','--affine_count',type=int, default=0)
-    args = parser.parse_args()
-    #args = parser.parse_args(['A','2','-a','5'])
+    #args = parser.parse_args()
+    args = parser.parse_args(['B','4'])
     type = args.type
     affineCount = args.affine_count
     size = args.size
@@ -182,10 +182,14 @@ def main():
     match type:
         case "A"|"a":
             Atype(size,ordering,affineCount)
+        case "B"|"b":
+            Btype(size,ordering,affineCount)
         case "C"|"c":
             Ctype(size,ordering,affineCount)
 
-def Ctype(size,ordering,affineCount=0,printIt=False):
+def Btype(size,ordering,affineCount=0):
+    return genBTypeFinite(size,ordering,True)
+def Ctype(size,ordering,affineCount=0):
     return genCTypeFinite(size,ordering,printIt=True)
 def Atype(size,ordering,affineCount=0):
     if(affineCount == 0):
@@ -193,6 +197,50 @@ def Atype(size,ordering,affineCount=0):
     else:
         sLyndonWords = genATypeAffine(size,ordering,affineCount,True)
     return sLyndonWords
+def genBTypeFinite(size:int, ordering:letterOrdering,printIt=False):
+    sLyndonWords = standardLyndonWords(ordering)
+    for length in range(2,2*size):
+        #i
+        if(length <= size):
+            comb = np.zeros(size,dtype=int)
+            for i in range(size-length,size):
+                comb[i] = 1
+            if printIt:
+                print(sLyndonWords.genWord(comb))
+            else:
+                sLyndonWords.genWord(comb)
+            if(length != size):
+                #ei - ej
+                for start in range(0,size - length):
+                    comb = np.zeros(size,dtype=int)
+                    for k in range(start,start+length):
+                        comb[k] = 1
+                    if printIt:
+                        print(sLyndonWords.genWord(comb))
+                    else:
+                        sLyndonWords.genWord(comb)
+        #ei + ej
+        if(length >= 3):
+            comb = np.zeros(size,dtype=int)
+            comb[-1] = 2
+            for i in range(size-min(length-1,size),size-1):
+                comb[i] = 1
+            oneIndex = size-min(length-1,size)
+            twoIndex = size-1
+            while(sum(comb) < length):
+                twoIndex -= 1
+                comb[twoIndex] = 2
+            while(oneIndex < twoIndex):
+                if(printIt):
+                    print(sLyndonWords.genWord(comb))
+                else:
+                    sLyndonWords.genWord(comb)
+                twoIndex -= 1
+                comb[twoIndex] = 2
+                comb[oneIndex] = 0
+                oneIndex+=1
+    return sLyndonWords
+        
 def genCTypeFinite(size:int,ordering:letterOrdering,printIt=False):
     sLyndonWords = standardLyndonWords(ordering)
     for length in range(2,2*size):
@@ -279,12 +327,12 @@ def genATypeAffine(size:int,ordering:letterOrdering,affineCount,printIt=False):
                 if(length == size and size != 2):
                     if printIt:
                         for i in sLyndonWords.genWord(comb,affine=True,topn=size-1):
-                            print(i)
+                            print(f"{i} {comb}")
                     else:
                         sLyndonWords.genWord(comb,affine=True,topn=size-1)
                 else:
                     if printIt:
-                        print(sLyndonWords.genWord(comb,affine=True))
+                        print(f"{sLyndonWords.genWord(comb,affine=True)} {comb}")
                     else:
                         sLyndonWords.genWord(comb,affine=True)
     return sLyndonWords
