@@ -78,13 +78,15 @@ class letterOrdering:
         self.letterOrdering = letterOrdering
         for i in range(len(letterOrdering)):
             self.letterOrdering[i].index = i
+    def __len__(self):
+        return len(self.letterOrdering)
 class standardLyndonWords:
-    arr = []
     ordering:letterOrdering
     def commutator(A,B):
         return (A.matrix[0]@ B.matrix[0]-B.matrix[0]@ A.matrix[0], B.matrix[1] + A.matrix[1])
     def __init__(self, ordering:letterOrdering):
-        self.arr.append([word([i],len(ordering.letterOrdering)) for i in ordering.letterOrdering])
+        self.arr = []
+        self.arr.append([word([i],len(ordering)) for i in ordering.letterOrdering])
         self.ordering = ordering
     def getWord(self, combination):
         sameLengths = self.arr[sum(combination)-1]
@@ -162,8 +164,8 @@ def main():
     parser.add_argument("size",type=int)
     parser.add_argument("-o","--order", nargs='+', type =int)
     parser.add_argument('-a','--affine_count',type=int, default=0)
-    #args = parser.parse_args()
-    args = parser.parse_args(['B','4'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['B','4'])
     type = args.type
     affineCount = args.affine_count
     size = args.size

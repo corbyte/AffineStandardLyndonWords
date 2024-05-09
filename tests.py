@@ -1,0 +1,120 @@
+import unittest
+from LyndonWords import *
+import numpy
+def getSet(type,arr,affineCount=0):
+    ordering = letterOrdering([letter(str(i),i) for i in arr])
+    match type:
+        case "A"|"a":
+            if(affineCount== 0):
+                result = genATypeFinite(len(arr),ordering)
+            else:
+                result = genATypeAffine(len(arr),ordering,affineCount)
+        case "B"|"b":
+            result = genBTypeFinite(len(arr),ordering,affineCount)
+        case "C"|"c":
+            result = genCTypeFinite(len(arr),ordering,affineCount)
+    return toSet(result)
+def toSet(lW):
+    resultSet = set()
+    for i in lW.arr:
+        for j in i:
+            resultSet.add(str(j))
+    return resultSet
+
+class TestStringMethods(unittest.TestCase):
+    def test_A_Finite_1(self):
+        arr = [2,3,1,4]
+        ordering = letterOrdering([letter(str(i),i) for i in arr])
+        
+        expected = [
+            "1",
+            '2',
+            '3',
+            '4',
+            '2,1',
+            '2,3',
+            '3,4',
+            '2,1,3',
+            '2,3,4',
+            '2,1,3,4']
+        self.assertEqual(toSet(genATypeFinite(len(arr),ordering)),set(expected))
+    def test_A_Finite_2(self):
+        arr = [1,2,3,4,5,6,7,8,9,10]
+        expected = [x.strip(' ') for x in '''1
+        2
+        3
+        4
+        5
+        6
+        7
+        8
+        9
+        10
+        1,2
+        2,3
+        3,4
+        4,5
+        5,6
+        6,7
+        7,8
+        8,9
+        9,10
+        1,2,3
+        2,3,4
+        3,4,5
+        4,5,6
+        5,6,7
+        6,7,8
+        7,8,9
+        8,9,10
+        1,2,3,4
+        2,3,4,5
+        3,4,5,6
+        4,5,6,7
+        5,6,7,8
+        6,7,8,9
+        7,8,9,10
+        1,2,3,4,5
+        2,3,4,5,6
+        3,4,5,6,7
+        4,5,6,7,8
+        5,6,7,8,9
+        6,7,8,9,10
+        1,2,3,4,5,6
+        2,3,4,5,6,7
+        3,4,5,6,7,8
+        4,5,6,7,8,9
+        5,6,7,8,9,10
+        1,2,3,4,5,6,7
+        2,3,4,5,6,7,8
+        3,4,5,6,7,8,9
+        4,5,6,7,8,9,10
+        1,2,3,4,5,6,7,8
+        2,3,4,5,6,7,8,9
+        3,4,5,6,7,8,9,10
+        1,2,3,4,5,6,7,8,9
+        2,3,4,5,6,7,8,9,10
+        1,2,3,4,5,6,7,8,9,10'''.split("\n")]
+        self.assertEqual(getSet("A",arr),set(expected))
+    def test_C_Finite_1(self):
+        arr = [1,2,3]
+        expected = [x.strip(' ') for x in 
+                    '''1
+                    2
+                    3
+                    2,3
+                    1,2
+                    1,2,3
+                    2,2,3
+                    1,2,3,2
+                    1,2,1,2,3'''.split("\n")]
+        self.assertEqual(getSet("C",arr),set(expected))
+    def test_C_Finite_2(self):
+        arr = [4,2,1,3]
+        expected = set(
+            ['1','2','3','4','4,3','2,1','2,3','4,3,2','2,3,1','4,3,3','4,3,2,1','4,3,3,2','4,3,3,2,1',
+             '4,3,3,2,2','4,3,3,2,1,2','4,3,3,2,1,2,1']
+        )
+        self.assertEqual(getSet("C",arr),expected)
+if __name__ == '__main__':
+    unittest.main()
