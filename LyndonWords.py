@@ -73,20 +73,19 @@ class word:
     def __add__(self,other):
         return word(np.concatenate((self.string,other.string),dtype=word),len(self.weights)) 
 class letterOrdering:
-    letterOrdering:list[letter]
     def __init__(self, letterOrdering):
-        self.letterOrdering = letterOrdering
+        self.order:list[letter] = letterOrdering
         for i in range(len(letterOrdering)):
-            self.letterOrdering[i].index = i
+            self.order[i].index = i
     def __len__(self):
-        return len(self.letterOrdering)
+        return len(self.order)
 class standardLyndonWords:
     ordering:letterOrdering
     def commutator(A,B):
         return (A.matrix[0]@ B.matrix[0]-B.matrix[0]@ A.matrix[0], B.matrix[1] + A.matrix[1])
     def __init__(self, ordering:letterOrdering):
         self.arr = []
-        self.arr.append([word([i],len(ordering)) for i in ordering.letterOrdering])
+        self.arr.append([word([i],len(ordering)) for i in ordering.order])
         self.ordering = ordering
     def getWord(self, combination):
         sameLengths = self.arr[sum(combination)-1]
@@ -160,12 +159,12 @@ def parseWord(s:str):
             return
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("type",choices=["C","c","A","a","b","B"])
+    parser.add_argument("type",choices=["C","c","A","a","b","B",'d','D'])
     parser.add_argument("size",type=int)
     parser.add_argument("-o","--order", nargs='+', type =int)
     parser.add_argument('-a','--affine_count',type=int, default=0)
-    args = parser.parse_args()
-    #args = parser.parse_args(['B','4'])
+    #args = parser.parse_args()
+    args = parser.parse_args(['D','5'])
     type = args.type
     affineCount = args.affine_count
     size = args.size
@@ -188,11 +187,15 @@ def main():
             Btype(size,ordering,affineCount)
         case "C"|"c":
             Ctype(size,ordering,affineCount)
+        case "D"|"d":
+            Dtype(size,ordering,affineCount)
 
 def Btype(size,ordering,affineCount=0):
     return genBTypeFinite(size,ordering,True)
 def Ctype(size,ordering,affineCount=0):
     return genCTypeFinite(size,ordering,printIt=True)
+def Dtype(size,ordering,affineCount=0):
+    return genDTypeFinite(size,ordering,printIt=True)
 def Atype(size,ordering,affineCount=0):
     if(affineCount == 0):
         sLyndonWords = genATypeFinite(size,ordering,printIt=True)
@@ -338,5 +341,47 @@ def genATypeAffine(size:int,ordering:letterOrdering,affineCount,printIt=False):
                     else:
                         sLyndonWords.genWord(comb,affine=True)
     return sLyndonWords
+def genDTypeFinite(size:int,ordering:letterOrdering,printIt=False):
+    sLyndonWords = standardLyndonWords(ordering)
+    for length in range(2,2*size-2):
+        #i-j
+        for start in range(0,size - length):
+            comb = np.zeros(size,dtype=int)
+            for k in range(start,start+length):
+                comb[k] = 1
+            if printIt:
+                print(sLyndonWords.genWord(comb))
+            else:
+                sLyndonWords.genWord(comb)
+        #i+j
+        if(length < size):
+            comb=np.zeros(size,dtype=int)
+            comb[-1] =1
+            for i in range(-(length+1),-2,1):
+                comb[i] = 1
+            if printIt:
+                print(sLyndonWords.genWord(comb))
+            else:
+                sLyndonWords.genWord(comb)
+        if(length >= 3):
+            comb=np.zeros(size,dtype=int)
+            comb[-1] = 1
+            comb[-2] = 1
+            for i in range(size-min(length,size),size-2):
+                comb[i] = 1
+            oneIndex = size-min(length,size)
+            twoIndex = size-2
+            while(sum(comb) < length):
+                twoIndex -= 1
+                comb[twoIndex] = 2
+            while(oneIndex < twoIndex):
+                if(printIt):
+                    print(sLyndonWords.genWord(comb))
+                else:
+                    sLyndonWords.genWord(comb)
+                twoIndex -= 1
+                comb[twoIndex] = 2
+                comb[oneIndex] = 0
+                oneIndex+=1
 if __name__ == '__main__':    
     main()

@@ -151,5 +151,18 @@ class TestStringMethods(unittest.TestCase):
              ]
         )
         self.assertEqual(getSet("A",arr,affineCount=1),expected)
+    def test_B_1(self):
+        arr=[1,2,3,4]
+        expected=set(['1','2','3','4','3,4','1,2','2,3',
+                      '1,2,3','2,3,4','1,2,3,4','3,4,4','2,3,4,4',
+                      '2,3,4,4,3','1,2,3,4,4','1,2,3,4,4,3,2',
+                      '1,2,3,4,4,3'])
+        self.assertEqual(getSet("B",arr),expected)
+    def test_B_2(self):
+        arr=[4,3,1,2]
+        expected=set(['1','2','3','4','4,3','1,2','3,2','4,4,3','4,3,2',
+                      '3,2,1','4,3,2,1','4,4,3,2','4,3,4,3,2',
+                      '4,4,3,2,1','4,3,4,3,2,1','4,3,2,4,3,2,1'])
+        self.assertEqual(getSet("B",arr),expected)
 if __name__ == '__main__':
     unittest.main()
