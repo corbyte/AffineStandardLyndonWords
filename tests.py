@@ -2,17 +2,17 @@ import unittest
 from LyndonWords import *
 import numpy
 def getSet(type,arr,affineCount=0):
-    ordering = letterOrdering([letter(str(i),i) for i in arr])
+    ordering = letterOrdering(arr)
     match type:
         case "A"|"a":
             if(affineCount== 0):
-                result = genATypeFinite(len(arr),ordering)
+                result = genATypeFinite(ordering)
             else:
-                result = genATypeAffine(len(arr),ordering,affineCount)
+                result = genATypeAffine(ordering,affineCount)
         case "B"|"b":
-            result = genBTypeFinite(len(arr),ordering,affineCount)
+            result = genBTypeFinite(ordering,affineCount)
         case "C"|"c":
-            result = genCTypeFinite(len(arr),ordering,affineCount)
+            result = genCTypeFinite(ordering,affineCount)
     return toSet(result)
 def toSet(lW):
     resultSet = set()
@@ -24,8 +24,7 @@ def toSet(lW):
 class TestStringMethods(unittest.TestCase):
     def test_A_Finite_1(self):
         arr = [2,3,1,4]
-        ordering = letterOrdering([letter(str(i),i) for i in arr])
-        
+        ordering = letterOrdering(arr)
         expected = [
             "1",
             '2',
@@ -37,7 +36,7 @@ class TestStringMethods(unittest.TestCase):
             '2,1,3',
             '2,3,4',
             '2,1,3,4']
-        self.assertEqual(toSet(genATypeFinite(len(arr),ordering)),set(expected))
+        self.assertEqual(getSet("A",arr),set(expected))
     def test_A_Finite_2(self):
         arr = [1,2,3,4,5,6,7,8,9,10]
         expected = [x.strip(' ') for x in '''1

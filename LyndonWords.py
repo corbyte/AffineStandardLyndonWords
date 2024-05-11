@@ -38,6 +38,8 @@ class word:
         for i in self.string:
             self.weights[i.rootIndex-1] += 1
         self.weights.flags.writeable = False
+    def __getitem__(self,i):
+        return self.string[i]
     def __str__(self):
         return ','.join(str(i) for i in self.string)
     def __eq__(self,other):
@@ -74,6 +76,7 @@ class word:
         return word(np.concatenate((self.string,other.string),dtype=word),len(self.weights)) 
 class letterOrdering:
     def __init__(self, letterOrdering):
+        letterOrdering = [letter(str(i),i) for i in letterOrdering]
         self.order:list[letter] = letterOrdering
         for i in range(len(letterOrdering)):
             self.order[i].index = i
@@ -164,7 +167,8 @@ def main():
     parser.add_argument("-o","--order", nargs='+', type =int)
     parser.add_argument('-a','--affine_count',type=int, default=0)
     #args = parser.parse_args()
-    args = parser.parse_args(['D','5'])
+    args = parser.parse_args(['A','4', 
+                              '-a' ,'4','-o','1','0','2','3'])
     type = args.type
     affineCount = args.affine_count
     size = args.size
@@ -173,37 +177,38 @@ def main():
     order = []
     if(orderInput is None):
         if(affineCount == 0):
-            order = [letter(str(i),i) for i in range(1,size+1)]
+            order = [int(i) for i in range(1,size+1)]
         else:
-            order = [letter(str(i),i) for i in range(1,size)]
-            order.append(letter("0",0))
+            order = [int(i) for i in range(1,size)]
+            order.append(0)
     else:
-        order = [letter(str(i),i) for i in orderInput]
+        order = [int(i) for i in orderInput]
     ordering = letterOrdering(order)
     match type:
         case "A"|"a":
-            Atype(size,ordering,affineCount)
+            Atype(ordering,affineCount)
         case "B"|"b":
-            Btype(size,ordering,affineCount)
+            Btype(ordering,affineCount)
         case "C"|"c":
-            Ctype(size,ordering,affineCount)
+            Ctype(ordering,affineCount)
         case "D"|"d":
-            Dtype(size,ordering,affineCount)
+            Dtype(ordering,affineCount)
 
-def Btype(size,ordering,affineCount=0):
-    return genBTypeFinite(size,ordering,True)
-def Ctype(size,ordering,affineCount=0):
-    return genCTypeFinite(size,ordering,printIt=True)
-def Dtype(size,ordering,affineCount=0):
-    return genDTypeFinite(size,ordering,printIt=True)
-def Atype(size,ordering,affineCount=0):
+def Btype(ordering,affineCount=0):
+    return genBTypeFinite(ordering,True)
+def Ctype(ordering,affineCount=0):
+    return genCTypeFinite(ordering,printIt=True)
+def Dtype(ordering,affineCount=0):
+    return genDTypeFinite(ordering,printIt=True)
+def Atype(ordering,affineCount=0):
     if(affineCount == 0):
-        sLyndonWords = genATypeFinite(size,ordering,printIt=True)
+        sLyndonWords = genATypeFinite(ordering,printIt=True)
     else:
-        sLyndonWords = genATypeAffine(size,ordering,affineCount,True)
+        sLyndonWords = genATypeAffine(ordering,affineCount,True)
     return sLyndonWords
-def genBTypeFinite(size:int, ordering:letterOrdering,printIt=False):
+def genBTypeFinite(ordering:letterOrdering,printIt=False):
     sLyndonWords = standardLyndonWords(ordering)
+    size = len(ordering)
     for length in range(2,2*size):
         #i
         if(length <= size):
@@ -246,7 +251,8 @@ def genBTypeFinite(size:int, ordering:letterOrdering,printIt=False):
                 oneIndex+=1
     return sLyndonWords
         
-def genCTypeFinite(size:int,ordering:letterOrdering,printIt=False):
+def genCTypeFinite(ordering:letterOrdering,printIt=False):
+    size=len(ordering)
     sLyndonWords = standardLyndonWords(ordering)
     for length in range(2,2*size):
         if(length <= 2*size -2):
@@ -289,7 +295,8 @@ def genCTypeFinite(size:int,ordering:letterOrdering,printIt=False):
             else:
                 sLyndonWords.genWord(comb)
     return sLyndonWords
-def genATypeFinite(size:int,ordering:letterOrdering,printIt=False):
+def genATypeFinite(ordering:letterOrdering,printIt=False):
+    size = len(ordering)
     sLyndonWords = standardLyndonWords(ordering)
     for length in range(2,size+1):
         for start in range(0,size - length + 1):
@@ -301,16 +308,18 @@ def genATypeFinite(size:int,ordering:letterOrdering,printIt=False):
             else:
                 sLyndonWords.genWord(comb)
     return sLyndonWords
-def genATypeAffine(size:int,ordering:letterOrdering,affineCount,printIt=False):
+def genATypeAffine(ordering:letterOrdering,affineCount,printIt=False):
+    size = len(ordering)
     sLyndonWords = standardLyndonWords(ordering)
-    for i in range(len(sLyndonWords.arr[0])-1):
-        arr = np.zeros((size,size),dtype=int)
-        arr[i,i+1] = 1
+    for i in range(len(sLyndonWords.arr[0])):
+        rootIndex = sLyndonWords.arr[0][i][0].rootIndex
+        if(rootIndex == 0):
+            arr = np.zeros((size,size),dtype=int)
+            arr[-1,0] = -1
+        else:
+            arr = np.zeros((size,size),dtype=int)
+            arr[rootIndex-1,rootIndex] = 1
         sLyndonWords.arr[0][i].matrix = (sparse.csr_array(arr),0)
-    #TODO: I don't think the zero is a I matrix
-    initalZero = np.zeros((size,size),dtype=int)
-    initalZero[-1,0] = -1
-    sLyndonWords.arr[0][-1].matrix = (sparse.csr_matrix(initalZero),1)
     delta = np.ones(size,dtype = int)
     for deltaCount in range(affineCount+1):
         for length in range(1,size+1):
@@ -341,7 +350,8 @@ def genATypeAffine(size:int,ordering:letterOrdering,affineCount,printIt=False):
                     else:
                         sLyndonWords.genWord(comb,affine=True)
     return sLyndonWords
-def genDTypeFinite(size:int,ordering:letterOrdering,printIt=False):
+def genDTypeFinite(ordering:letterOrdering,printIt=False):
+    size=len(ordering)
     sLyndonWords = standardLyndonWords(ordering)
     for length in range(2,2*size-2):
         #i-j
