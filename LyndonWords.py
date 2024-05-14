@@ -168,7 +168,7 @@ def main():
     parser.add_argument("-o","--order", nargs='+', type =int)
     parser.add_argument('-a','--affine_count',type=int, default=0)
     #args = parser.parse_args()
-    args = parser.parse_args(['C','4', 
+    args = parser.parse_args(['C','6', 
                               '-a' ,'2'])
     type = args.type
     affineCount = args.affine_count
@@ -305,14 +305,16 @@ def genCTypeAffine(ordering:letterOrdering,affineCount,printIt=False):
     sLyndonWords = standardLyndonWords(ordering)
     for i in range(len(sLyndonWords.arr[0])):
         rootIndex = sLyndonWords.arr[0][i][0].rootIndex
+        matrix = np.zeros((2*(size-1),2*(size-1)),dtype=int)
         if(rootIndex == 0):
-            #TODO: Figure out what b[i] is 
-            matrix = np.zeros((2*size,2*size),dtype=int)
             matrix[-1,0] = 1
             t=1
+        elif rootIndex == size-1:
+            matrix[size-2,size-1] = 1
+            t=0
         else:
-            matrix = np.zeros((2*size,2*size),dtype=int)
-            matrix[size+i,i] = 1
+            matrix[rootIndex-1,rootIndex] = 1
+            matrix[-rootIndex-1,-(rootIndex)] = -1
             t=0
         sLyndonWords.arr[0][i].matrix = (sparse.csr_array(matrix),t)
     delta = np.repeat(2,size)
@@ -327,7 +329,7 @@ def genCTypeAffine(ordering:letterOrdering,affineCount,printIt=False):
     for deltaCount in range(affineCount+1):
         if(deltaCount > 0):
             if printIt:
-                print(sLyndonWords.genWord(deltaCount*delta,True,size-1))
+                print(*sLyndonWords.genWord(deltaCount*delta,True,size-1),sep='\n')
             else:
                 sLyndonWords.genWord(deltaCount*delta,True,size-1)
         for length in range(1,2*size-2):
@@ -339,7 +341,7 @@ def genCTypeAffine(ordering:letterOrdering,affineCount,printIt=False):
                         sLyndonWords.genWord(comb+deltaCount*delta,True)
                 for comb in weights[-length]:
                     if printIt:
-                        print(sLyndonWords.genWord((deltaCount+1)*delta - comb),True)
+                        print(sLyndonWords.genWord((deltaCount+1)*delta - comb,True))
                     else:
                         sLyndonWords.genWord((deltaCount+1)*delta - comb,True)
             
