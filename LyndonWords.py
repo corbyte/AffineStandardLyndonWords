@@ -104,7 +104,7 @@ class rootSystem:
             case 'c'|'C':
                 delta = TypeCDelta(len(weight)-1)
         matches = []
-        for k in range((len(self.arr)-np.sum(weight))/sum(delta)+1):
+        for k in range(int((len(self.arr)-int(np.sum(weight)))/sum(delta)+1)):
             matches.extend(self.getWords(weight + k*delta))
         return matches
     def genWord(self, combinations,affine=False,topn=1):
@@ -184,8 +184,8 @@ def main():
     parser.add_argument("size",type=int)
     parser.add_argument("-o","--order", nargs='+', type =int)
     parser.add_argument('-a','--affine_count',type=int, default=0)
-    args = parser.parse_args()
-    #args = parser.parse_args(['C','2', '-a' ,'2', '-o', '2' ,'1','0'])
+    #args = parser.parse_args()
+    args = parser.parse_args(['C','2', '-a' ,'2', '-o', '2' ,'1','0'])
     type = args.type
     affineCount = args.affine_count
     size = args.size
@@ -210,35 +210,34 @@ def main():
                     order.append(0)
     else:
         order = [int(i) for i in orderInput]
-    ordering = letterOrdering(order)
     match type:
         case "A"|"a":
-            Atype(ordering,affineCount)
+            Atype(order,affineCount)
         case "B"|"b":
-            Btype(ordering,affineCount)
+            Btype(order,affineCount)
         case "C"|"c":
-            Ctype(ordering,affineCount)
+            Ctype(order,affineCount)
         case "D"|"d":
-            Dtype(ordering,affineCount)
+            Dtype(order,affineCount)
 
 def Btype(ordering,affineCount=0):
-    return genBTypeFinite(ordering,True)
+    return genTypeBFinite(ordering,True)
 def Ctype(ordering,affineCount=0):
     if(affineCount == 0):
-        sLyndonWords = genCTypeFinite(ordering,True)
+        sLyndonWords = genTypeCFinite(ordering,True)
     else:
-        sLyndonWords = genCTypeAffine(ordering,affineCount,True)
+        sLyndonWords = genTypeCAffine(ordering,affineCount,True)
     return sLyndonWords
 def Dtype(ordering,affineCount=0):
-    return genDTypeFinite(ordering,printIt=True)
+    return genTypeDFinite(ordering,printIt=True)
 def Atype(ordering,affineCount=0):
     if(affineCount == 0):
-        sLyndonWords = genATypeFinite(ordering,printIt=True)
+        sLyndonWords = genTypeAFinite(ordering,printIt=True)
     else:
-        sLyndonWords = genATypeAffine(ordering,affineCount,True)
+        sLyndonWords = genTypeAAffine(ordering,affineCount,True)
     return sLyndonWords
-def genBTypeFinite(ordering:letterOrdering,printIt=False):
-    BRootSystem = rootSystem(ordering)
+def genTypeBFinite(ordering,printIt=False):
+    BRootSystem = rootSystem(letterOrdering(ordering))
     size = len(ordering)
     for length in range(2,2*size):
         #i
@@ -282,9 +281,9 @@ def genBTypeFinite(ordering:letterOrdering,printIt=False):
                 oneIndex+=1
     return BRootSystem
         
-def genCTypeFinite(ordering:letterOrdering,printIt=False):
+def genTypeCFinite(ordering,printIt=False):
     size=len(ordering)
-    CRootSystem = rootSystem(ordering)
+    CRootSystem = rootSystem(letterOrdering(ordering))
     for length in range(2,2*size):
         if(length <= 2*size -2):
             #i+j
@@ -326,9 +325,9 @@ def genCTypeFinite(ordering:letterOrdering,printIt=False):
             else:
                 CRootSystem.genWord(comb)
     return CRootSystem
-def genCTypeAffine(ordering:letterOrdering,affineCount,printIt=False):
+def genTypeCAffine(ordering,affineCount,printIt=False)-> rootSystem:
     size=len(ordering)
-    CRootSystem = rootSystem(ordering)
+    CRootSystem = rootSystem(letterOrdering(ordering))
     for i in range(len(CRootSystem.arr[0])):
         rootIndex = CRootSystem.arr[0][i][0].rootIndex
         matrix = np.zeros((2*(size-1),2*(size-1)),dtype=int)
@@ -344,7 +343,7 @@ def genCTypeAffine(ordering:letterOrdering,affineCount,printIt=False):
             t=0
         CRootSystem.arr[0][i].matrix = (sparse.csr_array(matrix),t)
     delta = TypeCDelta(size-1)
-    simpleLetterOrdering = genCTypeFinite(letterOrdering([i for i in range(1,size)])).arr
+    simpleLetterOrdering = genTypeCFinite(letterOrdering([i for i in range(1,size)])).arr
     weights = [None]*len(simpleLetterOrdering)
     for row in range(len(simpleLetterOrdering)):
         weights[row] = [None]*len(simpleLetterOrdering[row])
@@ -371,9 +370,9 @@ def genCTypeAffine(ordering:letterOrdering,affineCount,printIt=False):
     return CRootSystem
             
         
-def genATypeFinite(ordering:letterOrdering,printIt=False):
+def genTypeAFinite(ordering,printIt=False):
     size = len(ordering)
-    ARootSystem = rootSystem(ordering)
+    ARootSystem = rootSystem(letterOrdering(ordering))
     for length in range(2,size+1):
         for start in range(0,size - length + 1):
             comb = np.zeros(size,dtype=int)
@@ -384,9 +383,9 @@ def genATypeFinite(ordering:letterOrdering,printIt=False):
             else:
                 ARootSystem.genWord(comb)
     return ARootSystem
-def genATypeAffine(ordering:letterOrdering,affineCount,printIt=False):
+def genTypeAAffine(ordering,affineCount,printIt=False):
     size = len(ordering)
-    ARootSystem = rootSystem(ordering)
+    ARootSystem = rootSystem(letterOrdering(ordering))
     for i in range(len(ARootSystem.arr[0])):
         rootIndex = ARootSystem.arr[0][i][0].rootIndex
         if(rootIndex == 0):
@@ -428,9 +427,9 @@ def genATypeAffine(ordering:letterOrdering,affineCount,printIt=False):
                     else:
                         ARootSystem.genWord(comb,affine=True)
     return ARootSystem
-def genDTypeFinite(ordering:letterOrdering,printIt=False):
+def genTypeDFinite(ordering,printIt=False):
     size=len(ordering)
-    DRootSystem = rootSystem(ordering)
+    DRootSystem = rootSystem(letterOrdering(ordering))
     for length in range(2,2*size-2):
         #i-j
         for start in range(0,size - length):

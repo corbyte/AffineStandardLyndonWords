@@ -2,17 +2,16 @@ import unittest
 from LyndonWords import *
 import numpy
 def getSet(type,arr,affineCount=0):
-    ordering = letterOrdering(arr)
     match type:
         case "A"|"a":
             if(affineCount== 0):
-                result = genATypeFinite(ordering)
+                result = genTypeAFinite(arr)
             else:
-                result = genATypeAffine(ordering,affineCount)
+                result = genTypeAAffine(arr,affineCount)
         case "B"|"b":
-            result = genBTypeFinite(ordering,affineCount)
+            result = genTypeBFinite(arr,affineCount)
         case "C"|"c":
-            result = genCTypeFinite(ordering,affineCount)
+            result = genTypeCFinite(arr,affineCount)
     return toSet(result)
 def toSet(lW):
     resultSet = set()
