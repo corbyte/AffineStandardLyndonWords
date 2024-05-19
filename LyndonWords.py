@@ -343,7 +343,7 @@ def genTypeCAffine(ordering,affineCount,printIt=False)-> rootSystem:
             t=0
         CRootSystem.arr[0][i].matrix = (sparse.csr_array(matrix),t)
     delta = TypeCDelta(size-1)
-    simpleLetterOrdering = genTypeCFinite(letterOrdering([i for i in range(1,size)])).arr
+    simpleLetterOrdering = genTypeCFinite([i for i in range(1,size)]).arr
     weights = [None]*len(simpleLetterOrdering)
     for row in range(len(simpleLetterOrdering)):
         weights[row] = [None]*len(simpleLetterOrdering[row])
