@@ -167,9 +167,8 @@ def main():
     parser.add_argument("size",type=int)
     parser.add_argument("-o","--order", nargs='+', type =int)
     parser.add_argument('-a','--affine_count',type=int, default=0)
-    #args = parser.parse_args()
-    args = parser.parse_args(['C','6', 
-                              '-a' ,'2'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['C','2', '-a' ,'2', '-o', '2' ,'1','0'])
     type = args.type
     affineCount = args.affine_count
     size = args.size
@@ -180,8 +179,18 @@ def main():
         if(affineCount == 0):
             order = [int(i) for i in range(1,size+1)]
         else:
-            order = [int(i) for i in range(1,size)]
-            order.append(0)
+            match type:
+                case 'A'|'a':
+                    order = [int(i) for i in range(1,size+1)]
+                    order.append(0)
+                case 'C'|'c':
+                    order = list(size+1)
+                    order[0]
+                    for i in range(0,size):
+                        order[i+1] = i
+                case _:
+                    order = [int(i) for i in range(1,size+1)]
+                    order.append(0)
     else:
         order = [int(i) for i in orderInput]
     ordering = letterOrdering(order)
