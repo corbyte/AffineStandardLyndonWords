@@ -82,7 +82,7 @@ class letterOrdering:
             self.order[i].index = i
     def __len__(self):
         return len(self.order)
-class standardLyndonWords:
+class rootSystem:
     ordering:letterOrdering
     def commutator(A,B):
         return (A.matrix[0]@ B.matrix[0]-B.matrix[0]@ A.matrix[0], B.matrix[1] + A.matrix[1])
@@ -97,6 +97,16 @@ class standardLyndonWords:
             if(np.all(i.weights == combination)):
                 word.append(i)
         return word
+    def getAffineWords(self, type,weight):
+        match type:
+            case 'a'|'A':
+                delta = TypeADelta(len(weight)-1)
+            case 'c'|'C':
+                delta = TypeCDelta(len(weight)-1)
+        matches = []
+        for k in range((len(self.arr)-np.sum(weight))/sum(delta)+1):
+            matches.extend(self.getWords(weight + k*delta))
+        return matches
     def genWord(self, combinations,affine=False,topn=1):
         weight = sum(combinations)
         #Maybe make potentialOptions a set
@@ -116,7 +126,7 @@ class standardLyndonWords:
                     if(comp < j):
                         newWord = comp + j
                         if(affine):
-                            bracket = standardLyndonWords.commutator(comp,j)
+                            bracket = rootSystem.commutator(comp,j)
                             #Checks to see if bracket is non-zero
                             if bracket[0].size == 0:
                                 continue
@@ -125,7 +135,7 @@ class standardLyndonWords:
                     else:
                         newWord = j + comp
                         if(affine):
-                            bracket = standardLyndonWords.commutator(j,comp)
+                            bracket = rootSystem.commutator(j,comp)
                             if bracket[0].size == 0:
                                 continue
                             newWord.matrix = bracket
@@ -154,6 +164,13 @@ class standardLyndonWords:
                 index += 1
             self.arr[-1].extend(liPotentialOptions)
             return liPotentialOptions
+def TypeADelta(n):
+    return np.ones(n+1,dtype=int)
+def TypeCDelta(n):
+    delta = np.repeat(2,n+1)
+    delta[-1] = 1
+    delta[-2] = 1
+    return delta
 def parseWord(s:str):
     if(len(s) == 1):
         return s
@@ -185,7 +202,7 @@ def main():
                     order.append(0)
                 case 'C'|'c':
                     order = list(size+1)
-                    order[0]
+                    order[0] = size
                     for i in range(0,size):
                         order[i+1] = i
                 case _:
@@ -221,7 +238,7 @@ def Atype(ordering,affineCount=0):
         sLyndonWords = genATypeAffine(ordering,affineCount,True)
     return sLyndonWords
 def genBTypeFinite(ordering:letterOrdering,printIt=False):
-    sLyndonWords = standardLyndonWords(ordering)
+    BRootSystem = rootSystem(ordering)
     size = len(ordering)
     for length in range(2,2*size):
         #i
@@ -230,9 +247,9 @@ def genBTypeFinite(ordering:letterOrdering,printIt=False):
             for i in range(size-length,size):
                 comb[i] = 1
             if printIt:
-                print(sLyndonWords.genWord(comb))
+                print(BRootSystem.genWord(comb))
             else:
-                sLyndonWords.genWord(comb)
+                BRootSystem.genWord(comb)
             if(length != size):
                 #ei - ej
                 for start in range(0,size - length):
@@ -240,9 +257,9 @@ def genBTypeFinite(ordering:letterOrdering,printIt=False):
                     for k in range(start,start+length):
                         comb[k] = 1
                     if printIt:
-                        print(sLyndonWords.genWord(comb))
+                        print(BRootSystem.genWord(comb))
                     else:
-                        sLyndonWords.genWord(comb)
+                        BRootSystem.genWord(comb)
         #ei + ej
         if(length >= 3):
             comb = np.zeros(size,dtype=int)
@@ -256,18 +273,18 @@ def genBTypeFinite(ordering:letterOrdering,printIt=False):
                 comb[twoIndex] = 2
             while(oneIndex < twoIndex):
                 if(printIt):
-                    print(sLyndonWords.genWord(comb))
+                    print(BRootSystem.genWord(comb))
                 else:
-                    sLyndonWords.genWord(comb)
+                    BRootSystem.genWord(comb)
                 twoIndex -= 1
                 comb[twoIndex] = 2
                 comb[oneIndex] = 0
                 oneIndex+=1
-    return sLyndonWords
+    return BRootSystem
         
 def genCTypeFinite(ordering:letterOrdering,printIt=False):
     size=len(ordering)
-    sLyndonWords = standardLyndonWords(ordering)
+    CRootSystem = rootSystem(ordering)
     for length in range(2,2*size):
         if(length <= 2*size -2):
             #i+j
@@ -281,9 +298,9 @@ def genCTypeFinite(ordering:letterOrdering,printIt=False):
                 comb[twoIndex] = 2
             while(oneIndex < twoIndex):
                 if(printIt):
-                    print(sLyndonWords.genWord(comb))
+                    print(CRootSystem.genWord(comb))
                 else:
-                    sLyndonWords.genWord(comb)
+                    CRootSystem.genWord(comb)
                 twoIndex -= 1
                 comb[twoIndex] = 2
                 comb[oneIndex] = 0
@@ -295,9 +312,9 @@ def genCTypeFinite(ordering:letterOrdering,printIt=False):
                 for k in range(start,start+length):
                     comb[k] =1
                 if printIt:
-                    print(sLyndonWords.genWord(comb))
+                    print(CRootSystem.genWord(comb))
                 else:
-                    sLyndonWords.genWord(comb)
+                    CRootSystem.genWord(comb)
         #2i
         if(length % 2 == 1):
             comb=np.zeros(size,dtype=int)
@@ -305,15 +322,15 @@ def genCTypeFinite(ordering:letterOrdering,printIt=False):
             for k in range(size-2,size-2-length//2,-1):
                 comb[k] = 2
             if printIt:
-                print(sLyndonWords.genWord(comb))
+                print(CRootSystem.genWord(comb))
             else:
-                sLyndonWords.genWord(comb)
-    return sLyndonWords
+                CRootSystem.genWord(comb)
+    return CRootSystem
 def genCTypeAffine(ordering:letterOrdering,affineCount,printIt=False):
     size=len(ordering)
-    sLyndonWords = standardLyndonWords(ordering)
-    for i in range(len(sLyndonWords.arr[0])):
-        rootIndex = sLyndonWords.arr[0][i][0].rootIndex
+    CRootSystem = rootSystem(ordering)
+    for i in range(len(CRootSystem.arr[0])):
+        rootIndex = CRootSystem.arr[0][i][0].rootIndex
         matrix = np.zeros((2*(size-1),2*(size-1)),dtype=int)
         if(rootIndex == 0):
             matrix[-1,0] = 1
@@ -325,10 +342,8 @@ def genCTypeAffine(ordering:letterOrdering,affineCount,printIt=False):
             matrix[rootIndex-1,rootIndex] = 1
             matrix[-rootIndex-1,-(rootIndex)] = -1
             t=0
-        sLyndonWords.arr[0][i].matrix = (sparse.csr_array(matrix),t)
-    delta = np.repeat(2,size)
-    delta[-1] = 1
-    delta[-2] = 1
+        CRootSystem.arr[0][i].matrix = (sparse.csr_array(matrix),t)
+    delta = TypeCDelta(size-1)
     simpleLetterOrdering = genCTypeFinite(letterOrdering([i for i in range(1,size)])).arr
     weights = [None]*len(simpleLetterOrdering)
     for row in range(len(simpleLetterOrdering)):
@@ -338,41 +353,42 @@ def genCTypeAffine(ordering:letterOrdering,affineCount,printIt=False):
     for deltaCount in range(affineCount+1):
         if(deltaCount > 0):
             if printIt:
-                print(*sLyndonWords.genWord(deltaCount*delta,True,size-1),sep='\n')
+                print(*CRootSystem.genWord(deltaCount*delta,True,size-1),sep='\n')
             else:
-                sLyndonWords.genWord(deltaCount*delta,True,size-1)
+                CRootSystem.genWord(deltaCount*delta,True,size-1)
         for length in range(1,2*size-2):
             if(deltaCount > 0 or length > 1):
                 for comb in weights[length-1]:
                     if printIt:
-                        print(sLyndonWords.genWord(comb+deltaCount*delta,True))
+                        print(CRootSystem.genWord(comb+deltaCount*delta,True))
                     else:
-                        sLyndonWords.genWord(comb+deltaCount*delta,True)
+                        CRootSystem.genWord(comb+deltaCount*delta,True)
                 for comb in weights[-length]:
                     if printIt:
-                        print(sLyndonWords.genWord((deltaCount+1)*delta - comb,True))
+                        print(CRootSystem.genWord((deltaCount+1)*delta - comb,True))
                     else:
-                        sLyndonWords.genWord((deltaCount+1)*delta - comb,True)
+                        CRootSystem.genWord((deltaCount+1)*delta - comb,True)
+    return CRootSystem
             
         
 def genATypeFinite(ordering:letterOrdering,printIt=False):
     size = len(ordering)
-    sLyndonWords = standardLyndonWords(ordering)
+    ARootSystem = rootSystem(ordering)
     for length in range(2,size+1):
         for start in range(0,size - length + 1):
             comb = np.zeros(size,dtype=int)
             for k in range(start,start+length):
                 comb[k] = 1
             if printIt:
-                print(sLyndonWords.genWord(comb))
+                print(ARootSystem.genWord(comb))
             else:
-                sLyndonWords.genWord(comb)
-    return sLyndonWords
+                ARootSystem.genWord(comb)
+    return ARootSystem
 def genATypeAffine(ordering:letterOrdering,affineCount,printIt=False):
     size = len(ordering)
-    sLyndonWords = standardLyndonWords(ordering)
-    for i in range(len(sLyndonWords.arr[0])):
-        rootIndex = sLyndonWords.arr[0][i][0].rootIndex
+    ARootSystem = rootSystem(ordering)
+    for i in range(len(ARootSystem.arr[0])):
+        rootIndex = ARootSystem.arr[0][i][0].rootIndex
         if(rootIndex == 0):
             arr = np.zeros((size,size),dtype=int)
             arr[-1,0] = -1
@@ -381,8 +397,8 @@ def genATypeAffine(ordering:letterOrdering,affineCount,printIt=False):
             arr = np.zeros((size,size),dtype=int)
             arr[rootIndex-1,rootIndex] = 1
             t=0
-        sLyndonWords.arr[0][i].matrix = (sparse.csr_array(arr),t)
-    delta = np.ones(size,dtype = int)
+        ARootSystem.arr[0][i].matrix = (sparse.csr_array(arr),t)
+    delta = TypeADelta(size-1)
     for deltaCount in range(affineCount+1):
         for length in range(1,size+1):
             if(length == 1 and deltaCount == 0):
@@ -402,19 +418,19 @@ def genATypeAffine(ordering:letterOrdering,affineCount,printIt=False):
                 comb = comb + deltaCount*delta
                 if(length == size and size != 2):
                     if printIt:
-                        for i in sLyndonWords.genWord(comb,affine=True,topn=size-1):
+                        for i in ARootSystem.genWord(comb,affine=True,topn=size-1):
                             print(f"{i} {comb}")
                     else:
-                        sLyndonWords.genWord(comb,affine=True,topn=size-1)
+                        ARootSystem.genWord(comb,affine=True,topn=size-1)
                 else:
                     if printIt:
-                        print(f"{sLyndonWords.genWord(comb,affine=True)} {comb}")
+                        print(f"{ARootSystem.genWord(comb,affine=True)} {comb}")
                     else:
-                        sLyndonWords.genWord(comb,affine=True)
-    return sLyndonWords
+                        ARootSystem.genWord(comb,affine=True)
+    return ARootSystem
 def genDTypeFinite(ordering:letterOrdering,printIt=False):
     size=len(ordering)
-    sLyndonWords = standardLyndonWords(ordering)
+    DRootSystem = rootSystem(ordering)
     for length in range(2,2*size-2):
         #i-j
         for start in range(0,size - length):
@@ -422,9 +438,9 @@ def genDTypeFinite(ordering:letterOrdering,printIt=False):
             for k in range(start,start+length):
                 comb[k] = 1
             if printIt:
-                print(sLyndonWords.genWord(comb))
+                print(DRootSystem.genWord(comb))
             else:
-                sLyndonWords.genWord(comb)
+                DRootSystem.genWord(comb)
         #i+j
         if(length < size):
             comb=np.zeros(size,dtype=int)
@@ -432,9 +448,9 @@ def genDTypeFinite(ordering:letterOrdering,printIt=False):
             for i in range(-(length+1),-2,1):
                 comb[i] = 1
             if printIt:
-                print(sLyndonWords.genWord(comb))
+                print(DRootSystem.genWord(comb))
             else:
-                sLyndonWords.genWord(comb)
+                DRootSystem.genWord(comb)
         if(length >= 3):
             comb=np.zeros(size,dtype=int)
             comb[-1] = 1
@@ -448,9 +464,9 @@ def genDTypeFinite(ordering:letterOrdering,printIt=False):
                 comb[twoIndex] = 2
             while(oneIndex < twoIndex):
                 if(printIt):
-                    print(sLyndonWords.genWord(comb))
+                    print(DRootSystem.genWord(comb))
                 else:
-                    sLyndonWords.genWord(comb)
+                    DRootSystem.genWord(comb)
                 twoIndex -= 1
                 comb[twoIndex] = 2
                 comb[oneIndex] = 0
