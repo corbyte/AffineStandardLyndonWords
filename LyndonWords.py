@@ -103,11 +103,14 @@ class rootSystem:
             raise ValueError('Please enter an n that matches the length or ordering')
         self.ordering:letterOrdering = letterOrdering(ordering)
         self.arr.append([word([i],len(self.ordering)) for i in self.ordering.order])
-        match type:
-            case 'A':
-                self.delta = rootSystem.TypeADelta(n)
-            case 'C':
-                self.delta = rootSystem.TypeCDelta(n)
+        if(affine):
+            match type:
+                case 'A':
+                    self.delta = rootSystem.TypeADelta(n)
+                case 'B':
+                    self.delta = rootSystem.TypeBDelta(n)
+                case 'C':
+                    self.delta = rootSystem.TypeCDelta(n)
     def getWords(self, combination):
         sameLengths = self.arr[sum(combination)-1]
         word = []
@@ -122,12 +125,21 @@ class rootSystem:
         for k in range(int((len(self.arr)-int(np.sum(weight)))/sum(self.delta)+1)):
             matches.extend(self.getWords(weight + k*self.delta))
         return matches
+    def isImaginary(self,combinations):
+        return (sum(combinations) % sum(self.delta) == 0)
     def genWord(self, combinations,affine=False,topn=1):
         weight = sum(combinations)
+        if(affine):
+            imaginary = self.isImaginary(combinations)
+        else:
+            imaginary = False
         potentialOptions = []
         if (weight > len(self.arr)+1):
             return None
-        minSubRoot = None
+        minSubRoot  = self.arr[0][0]
+        for i in self.arr[0]:
+            if i < minSubRoot:
+                minSubRoot = i
         for i in range(1,weight//2 + 1):
             minlen = self.arr[i-1]
             for j in minlen:
@@ -137,17 +149,19 @@ class rootSystem:
                 complement = self.getWords(diff)
                 if len(complement) == 0:
                     continue
-                if(len(complement) == 1 and minSubRoot is not None and j < minSubRoot):
+                if(len(complement) == 1 and j < minSubRoot):
                     continue
                 for comp in complement:
                     if(comp < j):
+                        if(not imaginary and comp < minSubRoot):
+                            continue
                         newWord = comp + j
                         if(affine):
-                            bracket = rootSystem.commutator(comp,j)
-                            #Checks to see if bracket is non-zero
-                            if bracket[0].size == 0:
-                                continue
-                            newWord.matrix = bracket
+                                bracket = rootSystem.commutator(comp,j)
+                                #Checks to see if bracket is non-zero
+                                if bracket[0].size == 0:
+                                    continue
+                                newWord.matrix = bracket
                         minSubRoot = comp
                         potentialOptions.append(newWord)
                     else:
@@ -161,7 +175,7 @@ class rootSystem:
                         potentialOptions.append(newWord)
         if(len(self.arr) < weight):
             self.arr.append([])
-        if topn == 1:
+        if not imaginary:
             match = potentialOptions[0]
             for i in potentialOptions:
                 if i > match:
@@ -185,11 +199,17 @@ class rootSystem:
             return liPotentialOptions
     def TypeADelta(n:int):
         return np.ones(n+1,dtype=int)
+    def TypeBDelta(n:int):
+        #TODO:
+        return [0]
     def TypeCDelta(n:int):
         delta = np.repeat(2,n+1)
         delta[-1] = 1
         delta[-2] = 1
         return delta
+    def TypeDDelta(n:int):
+        #TODO:
+        return[0]
 def parseWord(s:str):
     if(len(s) == 1):
         return s
