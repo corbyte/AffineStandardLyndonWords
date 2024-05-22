@@ -127,9 +127,10 @@ class rootSystem:
         return matches
     def isImaginary(self,combinations):
         return (sum(combinations) % sum(self.delta) == 0)
-    def genWord(self, combinations,affine=False,topn=1):
+    def genWord(self, combinations):
+        combinations = np.array(combinations,dtype=int)
         weight = sum(combinations)
-        if(affine):
+        if(self.affine):
             imaginary = self.isImaginary(combinations)
         else:
             imaginary = False
@@ -143,57 +144,56 @@ class rootSystem:
         for i in range(1,weight//2 + 1):
             minlen = self.arr[i-1]
             for j in minlen:
-                diff = list(map(lambda a, b: a-b, combinations,j.weights))
-                if(min(diff) < 0):
+                diff = combinations - j.weights
+                if((min(diff) < 0) or (not imaginary and j < minSubRoot)):
                     continue
                 complement = self.getWords(diff)
                 if len(complement) == 0:
-                    continue
-                if(len(complement) == 1 and j < minSubRoot):
                     continue
                 for comp in complement:
                     if(comp < j):
                         if(not imaginary and comp < minSubRoot):
                             continue
                         newWord = comp + j
-                        if(affine):
-                                bracket = rootSystem.commutator(comp,j)
-                                #Checks to see if bracket is non-zero
-                                if bracket[0].size == 0:
-                                    continue
-                                newWord.matrix = bracket
+                        if(self.affine and (self.isImaginary(comp.weights) or self.isImaginary(j.weights))):
+                            bracket = rootSystem.commutator(comp,j)
+                            #Checks to see if bracket is non-zero
+                            if bracket[0].size == 0:
+                                continue
+                            newWord.matrix = bracket
                         minSubRoot = comp
-                        potentialOptions.append(newWord)
+                        potentialOptions.append((newWord,comp,j))
                     else:
                         newWord = j + comp
-                        if(affine):
+                        if(self.affine and (self.isImaginary(comp.weights) or self.isImaginary(j.weights))):
                             bracket = rootSystem.commutator(j,comp)
                             if bracket[0].size == 0:
                                 continue
                             newWord.matrix = bracket
                         minSubRoot = j
-                        potentialOptions.append(newWord)
+                        potentialOptions.append((newWord,j,comp))
         if(len(self.arr) < weight):
             self.arr.append([])
         if not imaginary:
-            match = potentialOptions[0]
-            for i in potentialOptions:
-                if i > match:
-                    match = i
+            match = potentialOptions[-1][0]
+            if(self.affine):
+                match.matrix = rootSystem.commutator(potentialOptions[-1][1],potentialOptions[-1][2])
             self.arr[weight-1].append(match)
             return match
         else:
             potentialOptions = list(set(potentialOptions))
             potentialOptions.sort(reverse=True)
-            liPotentialOptions = [potentialOptions[0]]
-            liset = [potentialOptions[0].matrix[0].toarray().flatten()]
+            potentialOptions[0][0].matrix = rootSystem.commutator(potentialOptions[0][1],potentialOptions[0][2])
+            liPotentialOptions = [potentialOptions[0][0]]
+            liset = [potentialOptions[0][0].matrix[0].toarray().flatten()]
             index = 1
-            while(len(liset) < topn):
+            while(len(liset) < len(self.ordering)-1):
                 #change to only use non-zero matrix entries
-                liprime = liset + [potentialOptions[index].matrix[0].toarray().flatten()]
+                potentialOptions[index][0].matrix = rootSystem.commutator(potentialOptions[index][1],potentialOptions[index][2])
+                liprime = liset + [potentialOptions[index][0].matrix[0].toarray().flatten()]
                 if(np.linalg.matrix_rank(np.vstack(liprime)) == len(liprime)):
                     liset = liprime
-                    liPotentialOptions.append(potentialOptions[index])
+                    liPotentialOptions.append(potentialOptions[index][0])
                 index += 1
             self.arr[-1].extend(liPotentialOptions)
             return liPotentialOptions
@@ -391,21 +391,21 @@ def genTypeCAffine(ordering,affineCount,printIt=False)-> rootSystem:
     for deltaCount in range(affineCount+1):
         if(deltaCount > 0):
             if printIt:
-                print(*CRootSystem.genWord(deltaCount*delta,True,size-1),sep='\n')
+                print(*CRootSystem.genWord(deltaCount*delta),sep='\n')
             else:
-                CRootSystem.genWord(deltaCount*delta,True,size-1)
+                CRootSystem.genWord(deltaCount*delta)
         for length in range(1,2*size-2):
             if(deltaCount > 0 or length > 1):
                 for comb in weights[length-1]:
                     if printIt:
-                        print(CRootSystem.genWord(comb+deltaCount*delta,True))
+                        print(CRootSystem.genWord(comb+deltaCount*delta))
                     else:
-                        CRootSystem.genWord(comb+deltaCount*delta,True)
+                        CRootSystem.genWord(comb+deltaCount*delta)
                 for comb in weights[-length]:
                     if printIt:
-                        print(CRootSystem.genWord((deltaCount+1)*delta - comb,True))
+                        print(CRootSystem.genWord((deltaCount+1)*delta - comb))
                     else:
-                        CRootSystem.genWord((deltaCount+1)*delta - comb,True)
+                        CRootSystem.genWord((deltaCount+1)*delta - comb)
     return CRootSystem
             
         
@@ -456,15 +456,15 @@ def genTypeAAffine(ordering,affineCount,printIt=False):
                 comb = comb + deltaCount*delta
                 if(length == size and size != 2):
                     if printIt:
-                        for i in ARootSystem.genWord(comb,affine=True,topn=size-1):
+                        for i in ARootSystem.genWord(comb):
                             print(f"{i} {comb}")
                     else:
-                        ARootSystem.genWord(comb,affine=True,topn=size-1)
+                        ARootSystem.genWord(comb)
                 else:
                     if printIt:
-                        print(f"{ARootSystem.genWord(comb,affine=True)} {comb}")
+                        print(f"{ARootSystem.genWord(comb)} {comb}")
                     else:
-                        ARootSystem.genWord(comb,affine=True)
+                        ARootSystem.genWord(comb)
     return ARootSystem
 def genTypeDFinite(ordering,printIt=False):
     size=len(ordering)
