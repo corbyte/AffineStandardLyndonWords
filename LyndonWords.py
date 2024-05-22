@@ -82,14 +82,32 @@ class letterOrdering:
             self.order[i].index = i
     def __len__(self):
         return len(self.order)
+    def __getitem__(self,index):
+        return self.order[index]
+
 class rootSystem:
-    ordering:letterOrdering
     def commutator(A,B):
         return (A.matrix[0]@ B.matrix[0]-B.matrix[0]@ A.matrix[0], B.matrix[1] + A.matrix[1])
-    def __init__(self, ordering:letterOrdering):
+    def __init__(self, ordering,type:str = 'A', n:int = 0, affine:bool =False):
         self.arr = []
-        self.arr.append([word([i],len(ordering)) for i in ordering.order])
-        self.ordering = ordering
+        type = type.upper()
+        if( len(type) != 1 or type < 'A' or type > 'G' ):
+            raise ValueError('Type is invalid')
+        if(n == 0):
+            if(affine):
+                n = len(ordering)-1
+            else:
+                n = len(ordering)
+        self.affine = affine
+        if((affine and n!= len(ordering)-1) or (not affine and n!=len(ordering))):
+            raise ValueError('Please enter an n that matches the length or ordering')
+        self.ordering:letterOrdering = letterOrdering(ordering)
+        self.arr.append([word([i],len(self.ordering)) for i in self.ordering.order])
+        match type:
+            case 'A':
+                self.delta = rootSystem.TypeADelta(n)
+            case 'C':
+                self.delta = rootSystem.TypeCDelta(n)
     def getWords(self, combination):
         sameLengths = self.arr[sum(combination)-1]
         word = []
@@ -97,22 +115,19 @@ class rootSystem:
             if(np.all(i.weights == combination)):
                 word.append(i)
         return word
-    def getAffineWords(self, type,weight):
-        match type:
-            case 'a'|'A':
-                delta = TypeADelta(len(weight)-1)
-            case 'c'|'C':
-                delta = TypeCDelta(len(weight)-1)
+    def getAffineWords(self,weight):
+        if not self.affine:
+            raise ValueError('Cannot call getAffineWords on a simple Lie algebra')
         matches = []
-        for k in range(int((len(self.arr)-int(np.sum(weight)))/sum(delta)+1)):
-            matches.extend(self.getWords(weight + k*delta))
+        for k in range(int((len(self.arr)-int(np.sum(weight)))/sum(self.delta)+1)):
+            matches.extend(self.getWords(weight + k*self.delta))
         return matches
     def genWord(self, combinations,affine=False,topn=1):
         weight = sum(combinations)
-        #Maybe make potentialOptions a set
         potentialOptions = []
         if (weight > len(self.arr)+1):
             return None
+        minSubRoot = None
         for i in range(1,weight//2 + 1):
             minlen = self.arr[i-1]
             for j in minlen:
@@ -121,6 +136,8 @@ class rootSystem:
                     continue
                 complement = self.getWords(diff)
                 if len(complement) == 0:
+                    continue
+                if(len(complement) == 1 and minSubRoot is not None and j < minSubRoot):
                     continue
                 for comp in complement:
                     if(comp < j):
@@ -131,6 +148,7 @@ class rootSystem:
                             if bracket[0].size == 0:
                                 continue
                             newWord.matrix = bracket
+                        minSubRoot = comp
                         potentialOptions.append(newWord)
                     else:
                         newWord = j + comp
@@ -139,6 +157,7 @@ class rootSystem:
                             if bracket[0].size == 0:
                                 continue
                             newWord.matrix = bracket
+                        minSubRoot = j
                         potentialOptions.append(newWord)
         if(len(self.arr) < weight):
             self.arr.append([])
@@ -164,13 +183,13 @@ class rootSystem:
                 index += 1
             self.arr[-1].extend(liPotentialOptions)
             return liPotentialOptions
-def TypeADelta(n):
-    return np.ones(n+1,dtype=int)
-def TypeCDelta(n):
-    delta = np.repeat(2,n+1)
-    delta[-1] = 1
-    delta[-2] = 1
-    return delta
+    def TypeADelta(n:int):
+        return np.ones(n+1,dtype=int)
+    def TypeCDelta(n:int):
+        delta = np.repeat(2,n+1)
+        delta[-1] = 1
+        delta[-2] = 1
+        return delta
 def parseWord(s:str):
     if(len(s) == 1):
         return s
@@ -237,7 +256,7 @@ def Atype(ordering,affineCount=0):
         sLyndonWords = genTypeAAffine(ordering,affineCount,True)
     return sLyndonWords
 def genTypeBFinite(ordering,printIt=False):
-    BRootSystem = rootSystem(letterOrdering(ordering))
+    BRootSystem = rootSystem(ordering,'B')
     size = len(ordering)
     for length in range(2,2*size):
         #i
@@ -283,7 +302,7 @@ def genTypeBFinite(ordering,printIt=False):
         
 def genTypeCFinite(ordering,printIt=False):
     size=len(ordering)
-    CRootSystem = rootSystem(letterOrdering(ordering))
+    CRootSystem = rootSystem(ordering,'C')
     for length in range(2,2*size):
         if(length <= 2*size -2):
             #i+j
@@ -327,7 +346,7 @@ def genTypeCFinite(ordering,printIt=False):
     return CRootSystem
 def genTypeCAffine(ordering,affineCount,printIt=False)-> rootSystem:
     size=len(ordering)
-    CRootSystem = rootSystem(letterOrdering(ordering))
+    CRootSystem = rootSystem(ordering,'C',affine=True)
     for i in range(len(CRootSystem.arr[0])):
         rootIndex = CRootSystem.arr[0][i][0].rootIndex
         matrix = np.zeros((2*(size-1),2*(size-1)),dtype=int)
@@ -342,7 +361,7 @@ def genTypeCAffine(ordering,affineCount,printIt=False)-> rootSystem:
             matrix[-rootIndex-1,-(rootIndex)] = -1
             t=0
         CRootSystem.arr[0][i].matrix = (sparse.csr_array(matrix),t)
-    delta = TypeCDelta(size-1)
+    delta = CRootSystem.delta
     simpleLetterOrdering = genTypeCFinite([i for i in range(1,size)]).arr
     weights = [None]*len(simpleLetterOrdering)
     for row in range(len(simpleLetterOrdering)):
@@ -372,7 +391,7 @@ def genTypeCAffine(ordering,affineCount,printIt=False)-> rootSystem:
         
 def genTypeAFinite(ordering,printIt=False):
     size = len(ordering)
-    ARootSystem = rootSystem(letterOrdering(ordering))
+    ARootSystem = rootSystem(ordering)
     for length in range(2,size+1):
         for start in range(0,size - length + 1):
             comb = np.zeros(size,dtype=int)
@@ -385,7 +404,7 @@ def genTypeAFinite(ordering,printIt=False):
     return ARootSystem
 def genTypeAAffine(ordering,affineCount,printIt=False):
     size = len(ordering)
-    ARootSystem = rootSystem(letterOrdering(ordering))
+    ARootSystem = rootSystem(ordering, affine=True)
     for i in range(len(ARootSystem.arr[0])):
         rootIndex = ARootSystem.arr[0][i][0].rootIndex
         if(rootIndex == 0):
@@ -397,7 +416,7 @@ def genTypeAAffine(ordering,affineCount,printIt=False):
             arr[rootIndex-1,rootIndex] = 1
             t=0
         ARootSystem.arr[0][i].matrix = (sparse.csr_array(arr),t)
-    delta = TypeADelta(size-1)
+    delta = ARootSystem.delta
     for deltaCount in range(affineCount+1):
         for length in range(1,size+1):
             if(length == 1 and deltaCount == 0):
@@ -429,7 +448,7 @@ def genTypeAAffine(ordering,affineCount,printIt=False):
     return ARootSystem
 def genTypeDFinite(ordering,printIt=False):
     size=len(ordering)
-    DRootSystem = rootSystem(letterOrdering(ordering))
+    DRootSystem = rootSystem(ordering,'D')
     for length in range(2,2*size-2):
         #i-j
         for start in range(0,size - length):
