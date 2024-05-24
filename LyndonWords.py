@@ -161,7 +161,7 @@ class rootSystem:
                         if(self.affine and (self.isImaginary(comp.weights) or self.isImaginary(j.weights))):
                             bracket = rootSystem.commutator(comp,j)
                             #Checks to see if bracket is non-zero
-                            if bracket[0].size == 0:
+                            if not bracket[0].any():
                                 continue
                             newWord.matrix = bracket
                         minSubRoot = comp
@@ -170,7 +170,7 @@ class rootSystem:
                         newWord = j + comp
                         if(self.affine and (self.isImaginary(comp.weights) or self.isImaginary(j.weights))):
                             bracket = rootSystem.commutator(j,comp)
-                            if bracket[0].size == 0:
+                            if not bracket[0].any():
                                 continue
                             newWord.matrix = bracket
                         minSubRoot = j
