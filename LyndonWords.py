@@ -87,7 +87,10 @@ class letterOrdering:
 
 class rootSystem:
     def commutator(A,B):
-        return (A.matrix[0]@ B.matrix[0]-B.matrix[0]@ A.matrix[0], B.matrix[1] + A.matrix[1])
+        matrix = A.matrix[0]@ B.matrix[0]-B.matrix[0]@ A.matrix[0]
+        gcf = np.gcd.reduce(matrix.flatten())
+        gcf = max(1,gcf)
+        return (np.floor_divide(matrix,gcf,dtype=int), B.matrix[1] + A.matrix[1])
     def __init__(self, ordering,type:str = 'A', n:int = 0, affine:bool =False):
         self.arr = []
         type = type.upper()
@@ -183,16 +186,16 @@ class rootSystem:
         else:
             potentialOptions = list(set(potentialOptions))
             potentialOptions.sort(reverse=True)
-            while(rootSystem.commutator(potentialOptions[0][1],potentialOptions[0][2])[0].size == 0):
+            while(not rootSystem.commutator(potentialOptions[0][1],potentialOptions[0][2])[0].any()):
                 potentialOptions.pop(0)
             potentialOptions[0][0].matrix = rootSystem.commutator(potentialOptions[0][1],potentialOptions[0][2])
             liPotentialOptions = [potentialOptions[0][0]]
-            liset = [potentialOptions[0][0].matrix[0].toarray().flatten()]
+            liset = [potentialOptions[0][0].matrix[0].flatten()]
             index = 1
             while(len(liset) < len(self.ordering)-1):
                 #change to only use non-zero matrix entries
                 potentialOptions[index][0].matrix = rootSystem.commutator(potentialOptions[index][1],potentialOptions[index][2])
-                liprime = liset + [potentialOptions[index][0].matrix[0].toarray().flatten()]
+                liprime = liset + [potentialOptions[index][0].matrix[0].flatten()]
                 if(np.linalg.matrix_rank(np.vstack(liprime)) == len(liprime)):
                     liset = liprime
                     liPotentialOptions.append(potentialOptions[index][0])
@@ -380,7 +383,7 @@ def genTypeCAffine(ordering,affineCount,printIt=False)-> rootSystem:
             matrix[rootIndex-1,rootIndex] = 1
             matrix[-rootIndex-1,-(rootIndex)] = -1
             t=0
-        CRootSystem.arr[0][i].matrix = (sparse.csr_array(matrix),t)
+        CRootSystem.arr[0][i].matrix = (matrix,t)
     delta = CRootSystem.delta
     simpleLetterOrdering = genTypeCFinite([i for i in range(1,size)]).arr
     weights = [None]*len(simpleLetterOrdering)
@@ -435,7 +438,7 @@ def genTypeAAffine(ordering,affineCount,printIt=False):
             arr = np.zeros((size,size),dtype=int)
             arr[rootIndex-1,rootIndex] = 1
             t=0
-        ARootSystem.arr[0][i].matrix = (sparse.csr_array(arr),t)
+        ARootSystem.arr[0][i].matrix = (arr,t)
     delta = ARootSystem.delta
     for deltaCount in range(affineCount+1):
         for length in range(1,size+1):
