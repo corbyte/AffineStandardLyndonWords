@@ -202,6 +202,15 @@ class rootSystem:
                 index += 1
             self.arr[-1].extend(liPotentialOptions)
             return liPotentialOptions
+    def getWordsBySimple(self):
+        returnarr = []
+        for i in range(len(self.arr)):
+            for j in self.arr[i]:
+                returnarr.append(self.getAffineWords(j.weights))
+            if(i == sum(self.delta)-1):
+                returnarr.append(self.getAffineWords(self.delta))
+                break
+        return returnarr
     def TypeADelta(n:int):
         return np.ones(n+1,dtype=int)
     def TypeBDelta(n:int):
@@ -228,8 +237,8 @@ def main():
     parser.add_argument("size",type=int)
     parser.add_argument("-o","--order", nargs='+', type =int)
     parser.add_argument('-a','--affine_count',type=int, default=0)
-    #args = parser.parse_args()
-    args = parser.parse_args(['C','6', '-a' ,'6'])
+    args = parser.parse_args()
+    #args = parser.parse_args(['C','6', '-a' ,'6'])
     type = args.type
     affineCount = args.affine_count
     size = args.size
