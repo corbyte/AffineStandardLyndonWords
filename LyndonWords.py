@@ -202,15 +202,51 @@ class rootSystem:
                 index += 1
             self.arr[-1].extend(liPotentialOptions)
             return liPotentialOptions
-    def getWordsBySimple(self):
+    def getBaseWeights(self):
         returnarr = []
         for i in range(len(self.arr)):
             for j in self.arr[i]:
-                returnarr.append(self.getAffineWords(j.weights))
-            if(i == sum(self.delta)-1):
-                returnarr.append(self.getAffineWords(self.delta))
-                break
+                returnarr.append(j.weights)
+            if( i == sum(self.delta) -1 ):
+                returnarr.append(self.delta)
+                return returnarr
+    def getWordsByBase(self):
+        returnarr = []
+        for i in self.getBaseWeights():
+            returnarr.append(self.getAffineWords(i))
         return returnarr
+    def checkMonotonicity(self):
+        returnarr = []
+        for i in self.getBaseWeights()[:-1]:
+            weights = [i.weights for i in self.getAffineWords(i)]
+            for j in range(1,len(weights)):
+                monotonicity = 0
+                if(self.getWords(weights[j])[0] < self.getWords(weights[j-1])[0]):
+                    if(monotonicity == -1):
+                        monotonicity = 0
+                        break
+                    monotonicity = 1
+                else:
+                    if(monotonicity == 1):
+                        monotonicity = 0
+                        break
+                    monotonicity = -1
+            returnarr.append((str(weights[0]),monotonicity))
+        return returnarr
+    def checkConvexity(self):
+        exceptions = []
+        for length in range(len(self.arr)):
+            for sumWord in self.arr[length]:
+                for j in range(length):
+                    for alphaWord in self.arr[j]:
+                        diff = sumWord.weights - alphaWord.weights
+                        if(min(diff) < 0):
+                            continue
+                        for betaWord in self.getWords(diff):
+                            if( betaWord<sumWord == alphaWord < sumWord):
+                                exceptions.append((betaWord,alphaWord))
+        return exceptions
+            
     def TypeADelta(n:int):
         return np.ones(n+1,dtype=int)
     def TypeBDelta(n:int):
