@@ -107,13 +107,13 @@ class rootSystem:
         self.ordering:letterOrdering = letterOrdering(ordering)
         self.arr.append([word([i],len(self.ordering)) for i in self.ordering.order])
         if(affine):
-            match type:
-                case 'A':
-                    self.delta = rootSystem.TypeADelta(n)
-                case 'B':
-                    self.delta = rootSystem.TypeBDelta(n)
-                case 'C':
-                    self.delta = rootSystem.TypeCDelta(n)
+            if(type == 'A'):
+                self.delta = rootSystem.TypeADelta(n)
+            elif (type == 'B'):
+                self.delta = rootSystem.TypeBDelta(n) 
+            elif(type == 'C'):
+                self.delta = rootSystem.TypeCDelta(n)
+            
     def getWords(self, combination):
         sameLengths = self.arr[sum(combination)-1]
         word = []
@@ -285,27 +285,26 @@ def main():
         if(affineCount == 0):
             order = [int(i) for i in range(1,size+1)]
         else:
-            match type:
-                case 'A'|'a':
-                    order = [int(i) for i in range(1,size+1)]
-                    order.append(0)
-                case 'C'|'c':
-                    order = [i for i in range(-1,size)]
-                    order[0] = size
-                case _:
-                    order = [int(i) for i in range(1,size+1)]
-                    order.append(0)
+            type = type.upper()
+            if(type == 'A'):
+                order = [int(i) for i in range(1,size+1)]
+                order.append(0)
+            elif(type =='C'):
+                order = [i for i in range(-1,size)]
+                order[0] = size
+            else:
+                order = [int(i) for i in range(1,size+1)]
+                order.append(0)
     else:
         order = [int(i) for i in orderInput]
-    match type:
-        case "A"|"a":
-            Atype(order,affineCount)
-        case "B"|"b":
-            Btype(order,affineCount)
-        case "C"|"c":
-            Ctype(order,affineCount)
-        case "D"|"d":
-            Dtype(order,affineCount)
+    if type == "A":
+        Atype(order,affineCount)
+    elif type == "B":
+        Btype(order,affineCount)
+    elif type == "C":
+        Ctype(order,affineCount)
+    elif type == "D":
+        Dtype(order,affineCount)
 
 def Btype(ordering,affineCount=0):
     return genTypeBFinite(ordering,True)
