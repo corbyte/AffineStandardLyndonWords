@@ -38,6 +38,8 @@ class word:
         for i in self.string:
             self.weights[i.rootIndex-1] += 1
         self.weights.flags.writeable = False
+    def __len__(self):
+        return len(self.string)
     def __getitem__(self,i):
         return self.string[i]
     def __str__(self):
@@ -117,9 +119,33 @@ class rootSystem:
                 self.delta = rootSystem.TypeBDelta(n) 
             elif(type == 'C'):
                 self.delta = rootSystem.TypeCDelta(n) 
-            self.deltaWeight = sum(self.delta)         
-            
+            self.deltaWeight = sum(self.delta) 
+    def standardFactorization(self,wordToFactor):
+        if(type(wordToFactor) is not word):
+            res = self.getWords(np.array(wordToFactor,dtype=int))
+            if(len(res) == 0):
+                raise ValueError('Combination not found')
+            if(len(res) != 1):
+                raise ValueError('Must give imaginary word')
+            wordToFactor = res[0]
+        wordToFactorWeight = wordToFactor.weights
+        weight = np.copy(wordToFactor.weights)
+        for i in range(len(wordToFactor)):
+            weight[wordToFactor[i].rootIndex -1] -= 1
+            rightWords = self.getWords(weight)
+            if(len(rightWords) == 0):
+                continue
+            for rightWord in rightWords:
+                flag = False
+                for j in range(len(rightWord)):
+                    if(rightWord[j] != wordToFactor[i+j+1]):
+                        flag = True
+                        break
+                if(flag):
+                    continue
+                return (self.getWords(wordToFactorWeight-weight)[0],rightWord)
     def getWords(self, combination):
+        combination = np.array(combination,dtype=int)
         if(not combination.tobytes() in self.weightToWordDictionary):
             return []
         else:
