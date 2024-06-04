@@ -106,21 +106,24 @@ class rootSystem:
             raise ValueError('Please enter an n that matches the length or ordering')
         self.ordering:letterOrdering = letterOrdering(ordering)
         self.arr.append([word([i],len(self.ordering)) for i in self.ordering.order])
+        self.weightToWordDictionary = {}
+        for i in self.arr[0]:
+            self.weightToWordDictionary[i.weights.tobytes()] = [i]
+        self.baseWeights = [i.weights for i in self.arr[0]]
         if(affine):
             if(type == 'A'):
                 self.delta = rootSystem.TypeADelta(n)
             elif (type == 'B'):
                 self.delta = rootSystem.TypeBDelta(n) 
             elif(type == 'C'):
-                self.delta = rootSystem.TypeCDelta(n)
+                self.delta = rootSystem.TypeCDelta(n) 
+            self.deltaWeight = sum(self.delta)         
             
     def getWords(self, combination):
-        sameLengths = self.arr[sum(combination)-1]
-        word = []
-        for i in sameLengths:
-            if(np.all(i.weights == combination)):
-                word.append(i)
-        return word
+        if(not combination.tobytes() in self.weightToWordDictionary):
+            return []
+        else:
+            return self.weightToWordDictionary[combination.tobytes()]
     def getAffineWords(self,weight):
         if not self.affine:
             raise ValueError('Cannot call getAffineWords on a simple Lie algebra')
@@ -129,14 +132,13 @@ class rootSystem:
             matches.extend(self.getWords(weight + k*self.delta))
         return matches
     def isImaginary(self,combinations):
-        return (sum(combinations) % sum(self.delta) == 0)
+        return (self.affine and sum(combinations) % self.deltaWeight == 0)
     def genWord(self, combinations):
         combinations = np.array(combinations,dtype=int)
         weight = sum(combinations)
-        if(self.affine):
-            imaginary = self.isImaginary(combinations)
-        else:
-            imaginary = False
+        imaginary = self.isImaginary(combinations)
+        if(imaginary and weight == self.deltaWeight):
+            self.baseWeights.append(self.delta)
         potentialOptions = []
         if (weight > len(self.arr)+1):
             return None
@@ -144,44 +146,52 @@ class rootSystem:
         for i in self.arr[0]:
             if i < minSubRoot:
                 minSubRoot = i
-        for i in range(1,weight//2 + 1):
-            minlen = self.arr[i-1]
-            for j in minlen:
-                diff = combinations - j.weights
-                if((min(diff) < 0) or (not imaginary and j < minSubRoot)):
-                    continue
-                complement = self.getWords(diff)
-                if len(complement) == 0:
-                    continue
-                for comp in complement:
-                    if(comp < j):
-                        if(not imaginary and comp < minSubRoot):
+        baseWeights = self.baseWeights
+        for i in baseWeights:
+            i = np.copy(i)
+            j = combinations-i
+            if(len(self.getWords(j)) == 0):
+                continue
+            iImaginary = self.isImaginary(i)
+            jImaginary = self.isImaginary(j)
+            while(min(j) >= 0 and sum(i) <= len(self.arr)):
+                if(self.affine and iImaginary and jImaginary):
+                    break
+                words1 = self.getWords(i)
+                for word1 in words1:
+                    if(word1 < minSubRoot and not imaginary):
+                        continue
+                    words2 = self.getWords(j)
+                    for word2 in words2:
+                        if(word2 < minSubRoot and not imaginary):
                             continue
-                        newWord = comp + j
-                        if(self.affine and (self.isImaginary(comp.weights) or self.isImaginary(j.weights))):
-                            bracket = rootSystem.commutator(comp,j)
+                        if(word1 > word2):
+                            (word1,word2) = (word2, word1)
+                        newWord = word1 + word2
+                        if(self.affine and (iImaginary or jImaginary)):
+                            bracket = rootSystem.commutator(word1,word2)
                             #Checks to see if bracket is non-zero
                             if not bracket[0].any():
                                 continue
                             newWord.matrix = bracket
-                        minSubRoot = comp
-                        potentialOptions.append((newWord,comp,j))
-                    else:
-                        newWord = j + comp
-                        if(self.affine and (self.isImaginary(comp.weights) or self.isImaginary(j.weights))):
-                            bracket = rootSystem.commutator(j,comp)
-                            if not bracket[0].any():
-                                continue
-                            newWord.matrix = bracket
-                        minSubRoot = j
-                        potentialOptions.append((newWord,j,comp))
+                        minSubRoot = word1
+                        potentialOptions.append((newWord,word1,word2))
+                if(not self.affine):
+                    break
+                i += self.delta
+                j -= self.delta
         if(len(self.arr) < weight):
             self.arr.append([])
         if not imaginary:
-            match = potentialOptions[-1][0]
-            if(self.affine):
+            match = potentialOptions[-1][0]                
+            if(not self.affine):
+                self.baseWeights.append(match.weights)
+            else:
+                if(weight < self.deltaWeight):
+                    self.baseWeights.append(match.weights)
                 match.matrix = rootSystem.commutator(potentialOptions[-1][1],potentialOptions[-1][2])
             self.arr[weight-1].append(match)
+            self.weightToWordDictionary[combinations.tobytes()] = [match]
             return match
         else:
             potentialOptions = list(set(potentialOptions))
@@ -201,15 +211,10 @@ class rootSystem:
                     liPotentialOptions.append(potentialOptions[index][0])
                 index += 1
             self.arr[-1].extend(liPotentialOptions)
+            self.weightToWordDictionary[combinations.tobytes()] = liPotentialOptions
             return liPotentialOptions
     def getBaseWeights(self):
-        returnarr = []
-        for i in range(len(self.arr)):
-            for j in self.arr[i]:
-                returnarr.append(j.weights)
-            if( i == sum(self.delta) -1 ):
-                returnarr.append(self.delta)
-                return returnarr
+        return self.baseWeights
     def getWordsByBase(self):
         returnarr = []
         for i in self.getBaseWeights():
