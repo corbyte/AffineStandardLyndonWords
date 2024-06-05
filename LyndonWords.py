@@ -240,30 +240,39 @@ class rootSystem:
             self.weightToWordDictionary[combinations.tobytes()] = liPotentialOptions
             return liPotentialOptions
     def getBaseWeights(self):
-        return self.baseWeights
+        return np.array(self.baseWeights)
     def getWordsByBase(self):
         returnarr = []
         for i in self.getBaseWeights():
-            returnarr.append(self.getAffineWords(i))
-        return returnarr
-    def checkMonotonicity(self):
+            returnarr.append(np.array(self.getAffineWords(i)))
+        return np.array(returnarr)
+    def getMonotonicity(self, comb):
+        weights = [i.weights for i in self.getAffineWords(comb)]
+        for j in range(1,len(weights)):
+            monotonicity = 0
+            if(self.getWords(weights[j])[0] < self.getWords(weights[j-1])[0]):
+                if(monotonicity == -1):
+                    monotonicity = 0
+                    break
+                monotonicity = 1
+            else:
+                if(monotonicity == 1):
+                    monotonicity = 0
+                    break
+                monotonicity = -1
+        return monotonicity
+    def checkMonotonicity(self, filter:{'All', 'Increasing', 'Decreasing','None'}="All"):
         returnarr = []
         for i in self.getBaseWeights()[:-1]:
-            weights = [i.weights for i in self.getAffineWords(i)]
-            for j in range(1,len(weights)):
-                monotonicity = 0
-                if(self.getWords(weights[j])[0] < self.getWords(weights[j-1])[0]):
-                    if(monotonicity == -1):
-                        monotonicity = 0
-                        break
-                    monotonicity = 1
-                else:
-                    if(monotonicity == 1):
-                        monotonicity = 0
-                        break
-                    monotonicity = -1
-            returnarr.append((str(weights[0]),monotonicity))
-        return returnarr
+            monotonicity = self.getMonotonicity(i)
+            if(filter == 'None' and monotonicity != 0):
+                continue
+            if(filter == 'Increasing' and monotonicity != 1):
+                continue
+            if(filter == 'Decreasing' and monotonicity != -1):
+                continue
+            returnarr.append((str(self.getWords(i)[0].weights),monotonicity))
+        return np.array(returnarr)
     def checkConvexity(self):
         exceptions = []
         for length in range(len(self.arr)):
@@ -277,7 +286,9 @@ class rootSystem:
                             if( betaWord<sumWord == alphaWord < sumWord):
                                 exceptions.append((betaWord,alphaWord))
         return exceptions
-            
+    def permutations(type,n,k):
+        #TODO: update to give all the permutations for 
+        pass
     def TypeADelta(n:int):
         return np.ones(n+1,dtype=int)
     def TypeBDelta(n:int):
