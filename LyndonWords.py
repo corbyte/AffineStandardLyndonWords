@@ -86,6 +86,8 @@ class letterOrdering:
         return len(self.order)
     def __getitem__(self,index):
         return self.order[index]
+    def __str__(self):
+        return '<'.join([str(i) for i in self.order])
 
 class rootSystem:
     def commutator(A,B):
@@ -154,8 +156,12 @@ class rootSystem:
         if not self.affine:
             raise ValueError('Cannot call getAffineWords on a simple Lie algebra')
         matches = []
-        for k in range(int((len(self.arr)-int(np.sum(weight)))/sum(self.delta)+1)):
-            matches.extend(self.getWords(weight + k*self.delta))
+        k=0
+        newWord = self.getWords(weight + k*self.delta)
+        while len(newWord) > 0:
+            matches.extend(newWord)
+            k+=1
+            newWord=self.getWords(weight + k*self.delta)
         return matches
     def isImaginary(self,combinations):
         return (self.affine and sum(combinations) % self.deltaWeight == 0)
@@ -271,8 +277,8 @@ class rootSystem:
                 continue
             if(filter == 'Decreasing' and monotonicity != -1):
                 continue
-            returnarr.append((str(self.getWords(i)[0].weights),monotonicity))
-        return np.array(returnarr)
+            returnarr.append((self.getWords(i)[0].weights,monotonicity))
+        return np.array(returnarr, dtype=object)
     def checkConvexity(self):
         exceptions = []
         for length in range(len(self.arr)):
