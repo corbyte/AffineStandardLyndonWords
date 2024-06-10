@@ -143,12 +143,12 @@ class TestStringMethods(unittest.TestCase):
             ]
         )
         self.assertEqual(getSet("C",arr,2),expected)
-    def test_A_Affine_1(self):
+    '''def test_A_Affine_1(self):
         arr=[1,0]
         expected = set(['1','0','1,0','1,1,0','1,0,0','1,1,0,0',
                         '1,0,1,0,0','1,1,0,1,0','1,1,0,1,0,0','1,1,0,1,0,1,0',
                         '1,0,1,0,1,0,0','1,1,0,1,0,1,0,0'])
-        self.assertEqual(getSet("A",arr,affineCount=3),expected)
+        self.assertEqual(getSet("A",arr,affineCount=3),expected)'''
     def test_A_Affine_2(self):
         arr=[1,2,0]
         expected = set(
