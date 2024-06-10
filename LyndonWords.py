@@ -1,6 +1,7 @@
 import numpy as np
 import argparse
 from scipy import sparse
+from sympy.liealgebras.root_system import RootSystem as sympy_RootSystem
 class letter:
     index:int
     value:str
@@ -30,10 +31,10 @@ class letter:
         return self.index >= other.index
 class word:
     #Maybe change to sparse matrix
-    def __init__(self, wordArray,l,imaginary=False,matrix=(0,0)):
+    def __init__(self, wordArray,l,imaginary=False,es=None,hs=None):
         self.string = np.array(wordArray,dtype=letter)
         self.imaginary=imaginary
-        self.matrix = matrix
+        self.hs = None
         self.weights = np.zeros(l,dtype=int)
         for i in self.string:
             self.weights[i.rootIndex-1] += 1
@@ -90,24 +91,32 @@ class letterOrdering:
         return '<'.join([str(i) for i in self.order])
 
 class rootSystem:
-    def commutator(A,B):
-        matrix = A.matrix[0]@ B.matrix[0]-B.matrix[0]@ A.matrix[0]
-        gcf = np.gcd.reduce(matrix.flatten())
-        gcf = max(1,gcf)
-        return (np.floor_divide(matrix,gcf,dtype=int), B.matrix[1] + A.matrix[1])
-    def __init__(self, ordering,type:str = 'A', n:int = 0, affine:bool =False):
+    def eBracket(self, A,B):
+        if(self.isImaginary(A.weights)):
+            re = B
+            im = A
+        else:
+            re = A
+            im = B
+        weights = re.weights - (self.delta * sum(re.weights) // sum(self.delta))
+        return np.any(np.logical_and(weights!= 0, (im.hs @self.cartan_matrix) != 0))
+    def hBracket(self,A,B):
+        #FIXME:
+        newA = (A.weights - (self.delta *A.weights[-1]))
+        newB = (B.weights - (self.delta * B.weights[-1]))
+        if(np.any(newA < 0)):
+            return newB
+        return newA
+    def __init__(self, ordering,type:str = 'A', affine:bool =False):
         self.arr = []
         type = type.upper()
         if( len(type) != 1 or type < 'A' or type > 'G' ):
             raise ValueError('Type is invalid')
-        if(n == 0):
-            if(affine):
-                n = len(ordering)-1
-            else:
-                n = len(ordering)
+        if(affine):
+            self.n = len(ordering)-1
+        else:
+            self.n = len(ordering)
         self.affine = affine
-        if((affine and n!= len(ordering)-1) or (not affine and n!=len(ordering))):
-            raise ValueError('Please enter an n that matches the length or ordering')
         self.ordering:letterOrdering = letterOrdering(ordering)
         self.arr.append([word([i],len(self.ordering)) for i in self.ordering.order])
         self.weightToWordDictionary = {}
@@ -115,20 +124,35 @@ class rootSystem:
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
         self.baseWeights = [i.weights for i in self.arr[0]]
         if(affine):
+            self.cartan_matrix = np.zeros((self.n+1,self.n+1), dtype=int)
+            self.cartan_matrix[:-1,:-1] = np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int)
             if(type == 'A'):
-                self.delta = rootSystem.TypeADelta(n)
+                self.delta = rootSystem.TypeADelta(self.n)
+                extenstion = np.zeros(self.n+1,dtype=int)
+                extenstion[0] = -1
+                extenstion[-2] = -1
+                extenstion[-1] = 2
+                self.cartan_matrix[:,-1] = extenstion
+                self.cartan_matrix[-1] = extenstion
             elif (type == 'B'):
-                self.delta = rootSystem.TypeBDelta(n) 
+                self.delta = rootSystem.TypeBDelta(self.n) 
+                extenstion[1] = -1
+                extenstion[-1] = 2
+                self.cartan_matrix[:-1] = extenstion
+                self.cartan_matrix[:,:-1] = extenstion
             elif(type == 'C'):
-                self.delta = rootSystem.TypeCDelta(n) 
-            self.deltaWeight = sum(self.delta) 
+                self.delta = rootSystem.TypeCDelta(self.n)
+                self.cartan_matrix[-1,-1]= 2
+                self.cartan_matrix[-1,0] = -1
+                self.cartan_matrix[0,-1] = -2
+            self.deltaWeight = sum(self.delta)
     def standardFactorization(self,wordToFactor):
         if(type(wordToFactor) is not word):
             res = self.getWords(np.array(wordToFactor,dtype=int))
             if(len(res) == 0):
                 raise ValueError('Combination not found')
             if(len(res) != 1):
-                raise ValueError('Must give imaginary word')
+                raise ValueError('Must give real word')
             wordToFactor = res[0]
         wordToFactorWeight = wordToFactor.weights
         weight = np.copy(wordToFactor.weights)
@@ -197,17 +221,18 @@ class rootSystem:
                     for word2 in words2:
                         if(word2 < minSubRoot and not imaginary):
                             continue
-                        if(word1 > word2):
-                            (word1,word2) = (word2, word1)
-                        newWord = word1 + word2
+                        if(word1< word2):
+                            (a,b) = (word1,word2)
+                        else:
+                            (a,b) = (word2,word1)
+                        newWord = a + b
                         if(self.affine and (iImaginary or jImaginary)):
-                            bracket = rootSystem.commutator(word1,word2)
+                            bracket = self.eBracket(a,b)
                             #Checks to see if bracket is non-zero
-                            if not bracket[0].any():
+                            if not bracket.any():
                                 continue
-                            newWord.matrix = bracket
-                        minSubRoot = word1
-                        potentialOptions.append((newWord,word1,word2))
+                        minSubRoot = a
+                        potentialOptions.append((newWord,a,b))
                 if(not self.affine):
                     break
                 i += self.delta
@@ -221,23 +246,22 @@ class rootSystem:
             else:
                 if(weight < self.deltaWeight):
                     self.baseWeights.append(match.weights)
-                match.matrix = rootSystem.commutator(potentialOptions[-1][1],potentialOptions[-1][2])
             self.arr[weight-1].append(match)
             self.weightToWordDictionary[combinations.tobytes()] = [match]
             return match
         else:
             potentialOptions = list(set(potentialOptions))
             potentialOptions.sort(reverse=True)
-            while(not rootSystem.commutator(potentialOptions[0][1],potentialOptions[0][2])[0].any()):
+            while(not self.hBracket(potentialOptions[0][1],potentialOptions[0][2]).any()):
                 potentialOptions.pop(0)
-            potentialOptions[0][0].matrix = rootSystem.commutator(potentialOptions[0][1],potentialOptions[0][2])
+            potentialOptions[0][0].hs = self.hBracket(potentialOptions[0][1],potentialOptions[0][2])
             liPotentialOptions = [potentialOptions[0][0]]
-            liset = [potentialOptions[0][0].matrix[0].flatten()]
+            liset = [potentialOptions[0][0].hs]
             index = 1
             while(len(liset) < len(self.ordering)-1):
                 #change to only use non-zero matrix entries
-                potentialOptions[index][0].matrix = rootSystem.commutator(potentialOptions[index][1],potentialOptions[index][2])
-                liprime = liset + [potentialOptions[index][0].matrix[0].flatten()]
+                potentialOptions[index][0].hs = self.hBracket(potentialOptions[index][1],potentialOptions[index][2])
+                liprime = liset + [potentialOptions[index][0].hs]
                 if(np.linalg.matrix_rank(np.vstack(liprime)) == len(liprime)):
                     liset = liprime
                     liPotentialOptions.append(potentialOptions[index][0])
