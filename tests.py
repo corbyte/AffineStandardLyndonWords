@@ -1,22 +1,6 @@
 import unittest
 from LyndonWords import *
 import numpy
-def getSet(type,arr,affineCount=0):
-    match type:
-        case "A"|"a":
-            if(affineCount== 0):
-                result = genTypeAFinite(arr)
-            else:
-                result = genTypeAAffine(arr,affineCount)
-        case "B"|"b":
-            result = genTypeBFinite(arr)
-        case "C"|"c":
-            if(affineCount == 0):
-                result = genTypeCFinite(arr)
-            else:
-                result = genTypeCAffine(arr,affineCount)
-            
-    return toSet(result)
 def toSet(lW):
     resultSet = set()
     for i in lW.arr:
@@ -39,7 +23,7 @@ class TestStringMethods(unittest.TestCase):
             '2,1,3',
             '2,3,4',
             '2,1,3,4']
-        self.assertEqual(getSet("A",arr),set(expected))
+        self.assertEqual(toSet(rootSystem(arr,"A")),set(expected))
     def test_A_Finite_2(self):
         arr = [1,2,3,4,5,6,7,8,9,10]
         expected = [x.strip(' ') for x in '''1
@@ -97,7 +81,7 @@ class TestStringMethods(unittest.TestCase):
         1,2,3,4,5,6,7,8,9
         2,3,4,5,6,7,8,9,10
         1,2,3,4,5,6,7,8,9,10'''.split("\n")]
-        self.assertEqual(getSet("A",arr),set(expected))
+        self.assertEqual(toSet(rootSystem(arr,"A")),set(expected))
     def test_C_Finite_1(self):
         arr = [1,2,3]
         expected = [x.strip(' ') for x in 
@@ -110,14 +94,14 @@ class TestStringMethods(unittest.TestCase):
                     2,2,3
                     1,2,3,2
                     1,2,1,2,3'''.split("\n")]
-        self.assertEqual(getSet("C",arr),set(expected))
+        self.assertEqual(toSet(rootSystem(arr,'C')),set(expected))
     def test_C_Finite_2(self):
         arr = [4,2,1,3]
         expected = set(
             ['1','2','3','4','4,3','2,1','2,3','4,3,2','2,3,1','4,3,3','4,3,2,1','4,3,3,2','4,3,3,2,1',
              '4,3,3,2,2','4,3,3,2,1,2','4,3,3,2,1,2,1']
         )
-        self.assertEqual(getSet("C",arr),expected)
+        self.assertEqual(toSet(rootSystem(arr,'C')),set(expected))
     def test_C_Affine_1(self):
         arr = [4,0,1,2,3]
         expected = set(
@@ -142,7 +126,7 @@ class TestStringMethods(unittest.TestCase):
                 '4,3,2,1,0,1,2,4,3,3,2,1,0,1,2,4,3,3,2,1,0,1,2','4,3,3,2,2,1,1,0,1,2,3,4,3,3,2,2,1,1,0,1,2,3,0'
             ]
         )
-        self.assertEqual(getSet("C",arr,2),expected)
+        self.assertEqual(toSet(rootSystem(arr,'C',2)),set(expected))
     '''def test_A_Affine_1(self):
         arr=[1,0]
         expected = set(['1','0','1,0','1,1,0','1,0,0','1,1,0,0',
@@ -159,7 +143,7 @@ class TestStringMethods(unittest.TestCase):
              '1,2,1,0,2,1,0,2','1,0,1,0,2,1,0,2','1,0,2,2,1,0,2,0',
              '1,0,1,0,2,1,0,2,2','1,2,1,0,2,1,0,2,0']
         )
-        self.assertEqual(getSet("A",arr,affineCount=2),expected)
+        self.assertEqual(toSet(rootSystem(arr,"A",2)),expected)
     def test_A_Affine_3(self):
         arr=[1,2,3,4,0]
         expected = set(
@@ -177,7 +161,7 @@ class TestStringMethods(unittest.TestCase):
              '1,0,4,3,1,0,4,3,2,2','1,0,2,3,1,0,4'
              ]
         )
-        self.assertEqual(getSet("A",arr,affineCount=1),expected)
+        self.assertEqual(toSet(rootSystem(arr,'A',1)),expected)
     def test_A_Affine_4(self):
         arr=[1,0,2,3]
         expected = set(['1','2','3','0','1,2','2,3','0,3','1,0','1,2,3,0'
@@ -190,7 +174,7 @@ class TestStringMethods(unittest.TestCase):
                         '1,0,3,1,2,0,3,1,2,0','1,2,3,1,2,3,0,1,2,3,0','1,2,3,0,0,1,2,3,0,3,2',
                         '1,0,3,1,2,0,3,1,2,0,3','1,2,0,1,2,3,0,1,2,3,0','1,2,3,1,2,3,0,1,2,3,0,0',
                         '1,2,0,1,2,3,0,1,2,3,0,3','1,0,3,1,2,0,3,1,2,0,3,2'])
-        self.assertEqual(getSet("A",arr,affineCount=2),expected)
+        self.assertEqual(toSet(rootSystem(arr,"A",2)),expected)
     def test_A_Affine_5(self):
         arr=[1,2,3,4,5,0]
         expected = set(['1','2','3','4','5','0','1,2','4,5','2,3','3,4','5,0','1,0','1,2,3','2,3,4','3,4,5','4,5,0',
@@ -205,19 +189,19 @@ class TestStringMethods(unittest.TestCase):
                         '1,0,5,4,3,2,3,4,5,0,2','1,0,5,4,3,1,0,5,4,3,2','1,0,5,4,2,1,0,5,4,3,2','1,0,5,2,3,1,0,5,4,2,3',
                         '1,0,2,3,4,1,0,5,2,3,4','1,0,5,4,3,1,0,5,4,3,2,2','1,0,5,4,2,1,0,5,4,3,2,3','1,0,5,2,3,1,0,5,4,2,3,4',
                         '1,0,2,3,4,1,0,5,2,3,4,5','1,2,3,4,5,1,0,2,3,4,5,0'])
-        self.assertEqual(getSet("A",arr,affineCount=1),expected)
+        self.assertEqual(toSet(rootSystem(arr,"A",1)),expected)
     def test_B_1(self):
         arr=[1,2,3,4]
         expected=set(['1','2','3','4','3,4','1,2','2,3',
                       '1,2,3','2,3,4','1,2,3,4','3,4,4','2,3,4,4',
                       '2,3,4,4,3','1,2,3,4,4','1,2,3,4,4,3,2',
                       '1,2,3,4,4,3'])
-        self.assertEqual(getSet("B",arr),expected)
+        self.assertEqual(toSet(rootSystem(arr,"B")),expected)
     def test_B_2(self):
         arr=[4,3,1,2]
         expected=set(['1','2','3','4','4,3','1,2','3,2','4,4,3','4,3,2',
                       '3,2,1','4,3,2,1','4,4,3,2','4,3,4,3,2',
                       '4,4,3,2,1','4,3,4,3,2,1','4,3,2,4,3,2,1'])
-        self.assertEqual(getSet("B",arr),expected)
+        self.assertEqual(toSet(rootSystem(arr,"B")),expected)
 if __name__ == '__main__':
     unittest.main()
