@@ -107,23 +107,24 @@ class rootSystem:
         if(np.any(newA < 0)):
             return newB
         return newA
-    def __init__(self, ordering,type:str = 'A', affine:bool =False):
+    def __init__(self, ordering,type,k=0):
         self.arr = []
         type = type.upper()
+        self.k = k
+        self.affine = k != 0
         if( len(type) != 1 or type < 'A' or type > 'G' ):
             raise ValueError('Type is invalid')
-        if(affine):
+        if(self.affine):
             self.n = len(ordering)-1
         else:
             self.n = len(ordering)
-        self.affine = affine
         self.ordering:letterOrdering = letterOrdering(ordering)
         self.arr.append([word([i],len(self.ordering)) for i in self.ordering.order])
         self.weightToWordDictionary = {}
         for i in self.arr[0]:
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
         self.baseWeights = [i.weights for i in self.arr[0]]
-        if(affine):
+        if(self.affine):
             self.cartan_matrix = np.zeros((self.n+1,self.n+1), dtype=int)
             self.cartan_matrix[:-1,:-1] = np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int)
             if(type == 'A'):
@@ -146,6 +147,167 @@ class rootSystem:
                 self.cartan_matrix[-1,0] = -1
                 self.cartan_matrix[0,-1] = -2
             self.deltaWeight = sum(self.delta)
+            #Generating the wordsd
+            if(type == 'A'):
+                self.__genTypeAAffine()
+            elif(type == 'C'):
+                self.__genTypeCAffine()
+        else:
+            if(type == 'A'):
+                self.__genTypeAFinite()
+            elif(type == 'B'):
+                self.__genTypeBFinite()
+            elif(type == 'C'):
+                self.__genTypeCFinite()
+            elif(type == 'D'):
+                self.__genTypeDFinite()
+    def __genTypeAFinite(self):
+        size = self.n
+        for length in range(2,size+1):
+            for start in range(0,size - length + 1):
+                comb = np.zeros(size,dtype=int)
+                for k in range(start,start+length):
+                    comb[k] = 1
+                self.genWord(comb)
+    def __genTypeAAffine(self):
+        size = self.n+1
+        delta = self.delta
+        for deltaCount in range(self.k+1):
+            for length in range(1,size+1):
+                if(length == 1 and deltaCount == 0):
+                    continue
+                for start in range(0,size):
+                    if(length == size and start ==1):
+                        break
+                    if(start + length < size):
+                        comb = np.zeros(size,dtype=int)
+                        for k in range(length):
+                            comb[start+k] = 1
+                    else:
+                        comb=np.ones(size,dtype=int)
+                        startprime = start+length -size
+                        for k in range(size-length):
+                            comb[startprime+k] = 0
+                    comb = comb + deltaCount*delta
+                    self.genWord(comb)
+    def __genTypeBFinite(self):
+        size = self.n
+        for length in range(2,2*size):
+            #i
+            if(length <= size):
+                comb = np.zeros(size,dtype=int)
+                for i in range(size-length,size):
+                    comb[i] = 1
+                self.genWord(comb)
+                if(length != size):
+                    #ei - ej
+                    for start in range(0,size - length):
+                        comb = np.zeros(size,dtype=int)
+                        for k in range(start,start+length):
+                            comb[k] = 1
+                        self.genWord(comb)
+            #ei + ej
+            if(length >= 3):
+                comb = np.zeros(size,dtype=int)
+                comb[-1] = 2
+                for i in range(size-min(length-1,size),size-1):
+                    comb[i] = 1
+                oneIndex = size-min(length-1,size)
+                twoIndex = size-1
+                while(sum(comb) < length):
+                    twoIndex -= 1
+                    comb[twoIndex] = 2
+                while(oneIndex < twoIndex):
+                    self.genWord(comb)
+                    twoIndex -= 1
+                    comb[twoIndex] = 2
+                    comb[oneIndex] = 0
+                    oneIndex+=1    
+    def __genTypeDFinite(self):
+        size=self.n
+        for length in range(2,2*size-2):
+            #i-j
+            for start in range(0,size - length):
+                comb = np.zeros(size,dtype=int)
+                for k in range(start,start+length):
+                    comb[k] = 1
+                self.genWord(comb)
+            #i+j
+            if(length < size):
+                comb=np.zeros(size,dtype=int)
+                comb[-1] =1
+                for i in range(-(length+1),-2,1):
+                    comb[i] = 1
+                self.genWord(comb)
+            if(length >= 3):
+                comb=np.zeros(size,dtype=int)
+                comb[-1] = 1
+                comb[-2] = 1
+                for i in range(size-min(length,size),size-2):
+                    comb[i] = 1
+                oneIndex = size-min(length,size)
+                twoIndex = size-2
+                while(sum(comb) < length):
+                    twoIndex -= 1
+                    comb[twoIndex] = 2
+                while(oneIndex < twoIndex):
+                    self.genWord(comb)
+                    twoIndex -= 1
+                    comb[twoIndex] = 2
+                    comb[oneIndex] = 0
+                    oneIndex+=1
+    def __genTypeCFinite(self):
+        size=self.n
+        for length in range(2,2*size):
+            if(length <= 2*size -2):
+                #i+j
+                comb = np.zeros(size,dtype=int)
+                for i in range(size-min(length,size),size):
+                    comb[i] = 1
+                oneIndex = size-min(length,size)
+                twoIndex = size-1
+                while(sum(comb) < length):
+                    twoIndex -= 1
+                    comb[twoIndex] = 2
+                while(oneIndex < twoIndex):
+                    self.genWord(comb)
+                    twoIndex -= 1
+                    comb[twoIndex] = 2
+                    comb[oneIndex] = 0
+                    oneIndex+=1
+            #i-j
+            if(length < size):
+                for start in range(0,size-length):
+                    comb = np.zeros(size,dtype=int)
+                    for k in range(start,start+length):
+                        comb[k] =1
+                    self.genWord(comb)
+            #2i
+            if(length % 2 == 1):
+                comb=np.zeros(size,dtype=int)
+                comb[-1] = 1
+                for k in range(size-2,size-2-length//2,-1):
+                    comb[k] = 2
+                self.genWord(comb)
+    def __genTypeCAffine(self):
+        size=self.n+1
+        delta = self.delta
+        simpleLetterOrdering = rootSystem([i for i in range(1,size)],'C').arr
+        weights = [None]*len(simpleLetterOrdering)
+        for row in range(len(simpleLetterOrdering)):
+            weights[row] = [None]*len(simpleLetterOrdering[row])
+            for root in range(len(simpleLetterOrdering[row])):
+                weights[row][root] = simpleLetterOrdering[row][root].weights.tolist()+ [0]
+        for deltaCount in range(self.k+1):
+            if(deltaCount > 0):
+                self.genWord(deltaCount*delta)
+            for length in range(1,2*size-2):
+                if(deltaCount > 0 or length > 1):
+                    for comb in weights[length-1]:
+                        self.genWord(comb+deltaCount*delta)
+                    for comb in weights[-length]:
+                        self.genWord((deltaCount+1)*delta - comb)
+                                
     def standardFactorization(self,wordToFactor):
         if(type(wordToFactor) is not word):
             res = self.getWords(np.array(wordToFactor,dtype=int))
@@ -316,9 +478,6 @@ class rootSystem:
                             if( betaWord<sumWord == alphaWord < sumWord):
                                 exceptions.append((betaWord,alphaWord))
         return exceptions
-    def permutations(type,n,k):
-        #TODO: update to give all the permutations for 
-        pass
     def TypeADelta(n:int):
         return np.ones(n+1,dtype=int)
     def TypeBDelta(n:int):
@@ -332,13 +491,6 @@ class rootSystem:
     def TypeDDelta(n:int):
         #TODO:
         return[0]
-def parseWord(s:str):
-    if(len(s) == 1):
-        return s
-    rightFactor = s[-1]
-    for i in range(len(s)-1,0,-1):
-        if(s[i]<rightFactor[0]):
-            return
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("type",choices=["C","c","A","a","b","B",'d','D'])
@@ -376,257 +528,6 @@ def main():
     elif type == "C":
         Ctype(order,affineCount)
     elif type == "D":
-        Dtype(order,affineCount)
-
-def Btype(ordering,affineCount=0):
-    return genTypeBFinite(ordering,True)
-def Ctype(ordering,affineCount=0):
-    if(affineCount == 0):
-        sLyndonWords = genTypeCFinite(ordering,True)
-    else:
-        sLyndonWords = genTypeCAffine(ordering,affineCount,True)
-    return sLyndonWords
-def Dtype(ordering,affineCount=0):
-    return genTypeDFinite(ordering,printIt=True)
-def Atype(ordering,affineCount=0):
-    if(affineCount == 0):
-        sLyndonWords = genTypeAFinite(ordering,printIt=True)
-    else:
-        sLyndonWords = genTypeAAffine(ordering,affineCount,True)
-    return sLyndonWords
-def genTypeBFinite(ordering,printIt=False):
-    BRootSystem = rootSystem(ordering,'B')
-    size = len(ordering)
-    for length in range(2,2*size):
-        #i
-        if(length <= size):
-            comb = np.zeros(size,dtype=int)
-            for i in range(size-length,size):
-                comb[i] = 1
-            if printIt:
-                print(BRootSystem.genWord(comb))
-            else:
-                BRootSystem.genWord(comb)
-            if(length != size):
-                #ei - ej
-                for start in range(0,size - length):
-                    comb = np.zeros(size,dtype=int)
-                    for k in range(start,start+length):
-                        comb[k] = 1
-                    if printIt:
-                        print(BRootSystem.genWord(comb))
-                    else:
-                        BRootSystem.genWord(comb)
-        #ei + ej
-        if(length >= 3):
-            comb = np.zeros(size,dtype=int)
-            comb[-1] = 2
-            for i in range(size-min(length-1,size),size-1):
-                comb[i] = 1
-            oneIndex = size-min(length-1,size)
-            twoIndex = size-1
-            while(sum(comb) < length):
-                twoIndex -= 1
-                comb[twoIndex] = 2
-            while(oneIndex < twoIndex):
-                if(printIt):
-                    print(BRootSystem.genWord(comb))
-                else:
-                    BRootSystem.genWord(comb)
-                twoIndex -= 1
-                comb[twoIndex] = 2
-                comb[oneIndex] = 0
-                oneIndex+=1
-    return BRootSystem
-        
-def genTypeCFinite(ordering,printIt=False):
-    size=len(ordering)
-    CRootSystem = rootSystem(ordering,'C')
-    for length in range(2,2*size):
-        if(length <= 2*size -2):
-            #i+j
-            comb = np.zeros(size,dtype=int)
-            for i in range(size-min(length,size),size):
-                comb[i] = 1
-            oneIndex = size-min(length,size)
-            twoIndex = size-1
-            while(sum(comb) < length):
-                twoIndex -= 1
-                comb[twoIndex] = 2
-            while(oneIndex < twoIndex):
-                if(printIt):
-                    print(CRootSystem.genWord(comb))
-                else:
-                    CRootSystem.genWord(comb)
-                twoIndex -= 1
-                comb[twoIndex] = 2
-                comb[oneIndex] = 0
-                oneIndex+=1
-        #i-j
-        if(length < size):
-            for start in range(0,size-length):
-                comb = np.zeros(size,dtype=int)
-                for k in range(start,start+length):
-                    comb[k] =1
-                if printIt:
-                    print(CRootSystem.genWord(comb))
-                else:
-                    CRootSystem.genWord(comb)
-        #2i
-        if(length % 2 == 1):
-            comb=np.zeros(size,dtype=int)
-            comb[-1] = 1
-            for k in range(size-2,size-2-length//2,-1):
-                comb[k] = 2
-            if printIt:
-                print(CRootSystem.genWord(comb))
-            else:
-                CRootSystem.genWord(comb)
-    return CRootSystem
-def genTypeCAffine(ordering,affineCount,printIt=False)-> rootSystem:
-    size=len(ordering)
-    CRootSystem = rootSystem(ordering,'C',affine=True)
-    for i in range(len(CRootSystem.arr[0])):
-        rootIndex = CRootSystem.arr[0][i][0].rootIndex
-        matrix = np.zeros((2*(size-1),2*(size-1)),dtype=int)
-        if(rootIndex == 0):
-            matrix[-1,0] = 1
-            t=1
-        elif rootIndex == size-1:
-            matrix[size-2,size-1] = 1
-            t=0
-        else:
-            matrix[rootIndex-1,rootIndex] = 1
-            matrix[-rootIndex-1,-(rootIndex)] = -1
-            t=0
-        CRootSystem.arr[0][i].matrix = (matrix,t)
-    delta = CRootSystem.delta
-    simpleLetterOrdering = genTypeCFinite([i for i in range(1,size)]).arr
-    weights = [None]*len(simpleLetterOrdering)
-    for row in range(len(simpleLetterOrdering)):
-        weights[row] = [None]*len(simpleLetterOrdering[row])
-        for root in range(len(simpleLetterOrdering[row])):
-            weights[row][root] = simpleLetterOrdering[row][root].weights.tolist()+ [0]
-    for deltaCount in range(affineCount+1):
-        if(deltaCount > 0):
-            if printIt:
-                print(*CRootSystem.genWord(deltaCount*delta),sep='\n')
-            else:
-                CRootSystem.genWord(deltaCount*delta)
-        for length in range(1,2*size-2):
-            if(deltaCount > 0 or length > 1):
-                for comb in weights[length-1]:
-                    if printIt:
-                        print(CRootSystem.genWord(comb+deltaCount*delta))
-                    else:
-                        CRootSystem.genWord(comb+deltaCount*delta)
-                for comb in weights[-length]:
-                    if printIt:
-                        print(CRootSystem.genWord((deltaCount+1)*delta - comb))
-                    else:
-                        CRootSystem.genWord((deltaCount+1)*delta - comb)
-    return CRootSystem
-            
-        
-def genTypeAFinite(ordering,printIt=False):
-    size = len(ordering)
-    ARootSystem = rootSystem(ordering)
-    for length in range(2,size+1):
-        for start in range(0,size - length + 1):
-            comb = np.zeros(size,dtype=int)
-            for k in range(start,start+length):
-                comb[k] = 1
-            if printIt:
-                print(ARootSystem.genWord(comb))
-            else:
-                ARootSystem.genWord(comb)
-    return ARootSystem
-def genTypeAAffine(ordering,affineCount,printIt=False):
-    size = len(ordering)
-    ARootSystem = rootSystem(ordering, affine=True)
-    for i in range(len(ARootSystem.arr[0])):
-        rootIndex = ARootSystem.arr[0][i][0].rootIndex
-        if(rootIndex == 0):
-            arr = np.zeros((size,size),dtype=int)
-            arr[-1,0] = -1
-            t=1
-        else:
-            arr = np.zeros((size,size),dtype=int)
-            arr[rootIndex-1,rootIndex] = 1
-            t=0
-        ARootSystem.arr[0][i].matrix = (arr,t)
-    delta = ARootSystem.delta
-    for deltaCount in range(affineCount+1):
-        for length in range(1,size+1):
-            if(length == 1 and deltaCount == 0):
-                continue
-            for start in range(0,size):
-                if(length == size and start ==1):
-                    break
-                if(start + length < size):
-                    comb = np.zeros(size,dtype=int)
-                    for k in range(length):
-                        comb[start+k] = 1
-                else:
-                    comb=np.ones(size,dtype=int)
-                    startprime = start+length -size
-                    for k in range(size-length):
-                        comb[startprime+k] = 0
-                comb = comb + deltaCount*delta
-                if(length == size and size != 2):
-                    if printIt:
-                        for i in ARootSystem.genWord(comb):
-                            print(f"{i} {comb}")
-                    else:
-                        ARootSystem.genWord(comb)
-                else:
-                    if printIt:
-                        print(f"{ARootSystem.genWord(comb)} {comb}")
-                    else:
-                        ARootSystem.genWord(comb)
-    return ARootSystem
-def genTypeDFinite(ordering,printIt=False):
-    size=len(ordering)
-    DRootSystem = rootSystem(ordering,'D')
-    for length in range(2,2*size-2):
-        #i-j
-        for start in range(0,size - length):
-            comb = np.zeros(size,dtype=int)
-            for k in range(start,start+length):
-                comb[k] = 1
-            if printIt:
-                print(DRootSystem.genWord(comb))
-            else:
-                DRootSystem.genWord(comb)
-        #i+j
-        if(length < size):
-            comb=np.zeros(size,dtype=int)
-            comb[-1] =1
-            for i in range(-(length+1),-2,1):
-                comb[i] = 1
-            if printIt:
-                print(DRootSystem.genWord(comb))
-            else:
-                DRootSystem.genWord(comb)
-        if(length >= 3):
-            comb=np.zeros(size,dtype=int)
-            comb[-1] = 1
-            comb[-2] = 1
-            for i in range(size-min(length,size),size-2):
-                comb[i] = 1
-            oneIndex = size-min(length,size)
-            twoIndex = size-2
-            while(sum(comb) < length):
-                twoIndex -= 1
-                comb[twoIndex] = 2
-            while(oneIndex < twoIndex):
-                if(printIt):
-                    print(DRootSystem.genWord(comb))
-                else:
-                    DRootSystem.genWord(comb)
-                twoIndex -= 1
-                comb[twoIndex] = 2
-                comb[oneIndex] = 0
-                oneIndex+=1
+        Dtype(order,affineCount)    
 if __name__ == '__main__':    
     main()
