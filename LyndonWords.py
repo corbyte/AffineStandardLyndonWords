@@ -123,73 +123,61 @@ class rootSystem:
         self.weightToWordDictionary = {}
         for i in self.arr[0]:
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
-        self.baseWeights = [i.weights for i in self.arr[0]]
+        if(type == 'A'):
+            multiDimBase = rootSystem.getAWeights(self.n,self.affine)
+        elif(type == 'C'):
+            multiDimBase = rootSystem.getCWeights(self.n,self.affine)
+        elif(type == 'G'):
+            multiDimBase = rootSystem.getGWeights(self.affine)
+        self.baseWeights = np.array([i for j in multiDimBase for i in j],dtype=object)
         if(self.affine):
             self.cartan_matrix = np.zeros((self.n+1,self.n+1), dtype=int)
             self.cartan_matrix[:-1,:-1] = np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int)
             if(type == 'A'):
                 self.delta = rootSystem.TypeADelta(self.n)
-                extenstion = np.zeros(self.n+1,dtype=int)
-                extenstion[0] = -1
-                extenstion[-2] = -1
-                extenstion[-1] = 2
-                self.cartan_matrix[:,-1] = extenstion
-                self.cartan_matrix[-1] = extenstion
+                extension = np.zeros(self.n+1,dtype=int)
+                extension[0] = -1
+                extension[-2] = -1
+                extension[-1] = 2
+                self.cartan_matrix[:,-1] = extension
+                self.cartan_matrix[-1] = extension
             elif (type == 'B'):
                 self.delta = rootSystem.TypeBDelta(self.n) 
-                extenstion[1] = -1
-                extenstion[-1] = 2
-                self.cartan_matrix[:-1] = extenstion
-                self.cartan_matrix[:,:-1] = extenstion
+                extension[1] = -1
+                extension[-1] = 2
+                self.cartan_matrix[:-1] = extension
+                self.cartan_matrix[:,:-1] = extension
             elif(type == 'C'):
                 self.delta = rootSystem.TypeCDelta(self.n)
                 self.cartan_matrix[-1,-1]= 2
                 self.cartan_matrix[-1,0] = -1
                 self.cartan_matrix[0,-1] = -2
+            elif(type == 'G'):
+                self.delta = rootSystem.TypeGDelta()
+                self.cartan_matrix[-1,-1] = 2
+                self.cartan_matrix[-1,0] = -1
+                self.cartan_matrix[0,-1] = -1
             self.deltaWeight = sum(self.delta)
-            #Generating the wordsd
-            if(type == 'A'):
-                self.__genTypeAAffine()
-            elif(type == 'C'):
-                self.__genTypeCAffine()
+            #Generates the words
+            self.__genAffine()
         else:
             if(type == 'A'):
-                self.__genTypeAFinite()
+                self.__genFinite()
             elif(type == 'B'):
                 self.__genTypeBFinite()
             elif(type == 'C'):
-                self.__genTypeCFinite()
+                self.__genFinite()
             elif(type == 'D'):
                 self.__genTypeDFinite()
-    def __genTypeAFinite(self):
-        size = self.n
-        for length in range(2,size+1):
-            for start in range(0,size - length + 1):
-                comb = np.zeros(size,dtype=int)
-                for k in range(start,start+length):
-                    comb[k] = 1
-                self.genWord(comb)
-    def __genTypeAAffine(self):
-        size = self.n+1
-        delta = self.delta
-        for deltaCount in range(self.k+1):
-            for length in range(1,size+1):
-                if(length == 1 and deltaCount == 0):
-                    continue
-                for start in range(0,size):
-                    if(length == size and start ==1):
-                        break
-                    if(start + length < size):
-                        comb = np.zeros(size,dtype=int)
-                        for k in range(length):
-                            comb[start+k] = 1
-                    else:
-                        comb=np.ones(size,dtype=int)
-                        startprime = start+length -size
-                        for k in range(size-length):
-                            comb[startprime+k] = 0
-                    comb = comb + deltaCount*delta
-                    self.genWord(comb)
+            elif(type == 'G'):
+                self.__genFinite()
+    def __genFinite(self):
+        for i in self.baseWeights:
+            self.__genWord(i)
+    def __genAffine(self):
+        for k in range(self.k+1):
+            for i in self.baseWeights:
+                self.__genWord(i + self.delta * k)
     def __genTypeBFinite(self):
         size = self.n
         for length in range(2,2*size):
@@ -198,14 +186,14 @@ class rootSystem:
                 comb = np.zeros(size,dtype=int)
                 for i in range(size-length,size):
                     comb[i] = 1
-                self.genWord(comb)
+                self.__genWord(comb)
                 if(length != size):
                     #ei - ej
                     for start in range(0,size - length):
                         comb = np.zeros(size,dtype=int)
                         for k in range(start,start+length):
                             comb[k] = 1
-                        self.genWord(comb)
+                        self.__genWord(comb)
             #ei + ej
             if(length >= 3):
                 comb = np.zeros(size,dtype=int)
@@ -218,7 +206,7 @@ class rootSystem:
                     twoIndex -= 1
                     comb[twoIndex] = 2
                 while(oneIndex < twoIndex):
-                    self.genWord(comb)
+                    self.__genWord(comb)
                     twoIndex -= 1
                     comb[twoIndex] = 2
                     comb[oneIndex] = 0
@@ -231,14 +219,14 @@ class rootSystem:
                 comb = np.zeros(size,dtype=int)
                 for k in range(start,start+length):
                     comb[k] = 1
-                self.genWord(comb)
+                self.__genWord(comb)
             #i+j
             if(length < size):
                 comb=np.zeros(size,dtype=int)
                 comb[-1] =1
                 for i in range(-(length+1),-2,1):
                     comb[i] = 1
-                self.genWord(comb)
+                self.__genWord(comb)
             if(length >= 3):
                 comb=np.zeros(size,dtype=int)
                 comb[-1] = 1
@@ -251,63 +239,118 @@ class rootSystem:
                     twoIndex -= 1
                     comb[twoIndex] = 2
                 while(oneIndex < twoIndex):
-                    self.genWord(comb)
+                    self.__genWord(comb)
                     twoIndex -= 1
                     comb[twoIndex] = 2
                     comb[oneIndex] = 0
                     oneIndex+=1
-    def __genTypeCFinite(self):
-        size=self.n
-        for length in range(2,2*size):
-            if(length <= 2*size -2):
+    def __genTypeGAffine(self):
+        size=self.n+1
+        delta = self.delta
+        weights = rootSystem.getGWeights(True)
+        for deltaCount in range(self.k+1):
+            if(deltaCount > 0):
+                self.__genWord(deltaCount*delta)
+            for length in range(1,sum(self.delta0)+1):
+                if(deltaCount > 0 or length > 1):
+                    for comb in weights[length-1]:
+                        self.__genWord(comb+deltaCount*delta)
+                    for comb in weights[-length]:
+                        self.__genWord((deltaCount+1)*delta - comb)
+    def getAWeights(n,affine=False):
+        size = n
+        if(affine):
+            size += 1
+        arr = [[] for i in range(size)]
+        for length in range(1,n+1):
+            for start in range(0,n - length + 1):
+                comb = np.zeros(size,dtype=int)
+                for k in range(start,start+length):
+                    comb[k] = 1
+                arr[length-1].append(comb)
+        if(affine):
+            delta = rootSystem.TypeADelta(n)
+            for length in range(1,size):
+                for i in arr[-length-1]:
+                    if(i is None or i[-1] == 1):
+                        break
+                    arr[length-1].append(delta - i)
+                    index += 1
+            arr[-1].append(delta)
+        return arr    
+    def getGWeights(affine:bool=False):
+        if(affine):
+            arr = [[] for i in range(6)]
+        else:
+            arr = [[] for i in range(5)]
+        for i in [[1,0],[0,1],[1,1],[1,2],[1,3],[2,3]]:
+            if(affine):
+                i.append(0)
+            arr[sum(i)-1].append(np.array(i,dtype=int))
+        if(affine):
+            delta = rootSystem.TypeGDelta()
+            for length in range(1,len(arr)):
+                for i in arr[-length-1]:
+                    if(i is None or i[-1] == 1):
+                        break
+                    arr[length-1].append(delta - i)
+            arr[-1] = np.array([None])
+            arr[-1][0] = delta
+        return arr
+    def getCWeights(n,affine:bool=False):
+        size = n
+        if(affine):
+            size+=1
+            arr = [[] for i in range(2*size-1)]
+        else:
+            arr = [[] for i in range(1,2*n)]
+        for i in range(n):
+            comb = np.zeros(size,dtype=int)
+            comb[i] = 1
+            arr[0].append(comb)
+        for length in range(2,2*n):
+            if(length <= 2*n -2):
                 #i+j
                 comb = np.zeros(size,dtype=int)
-                for i in range(size-min(length,size),size):
+                i = n-1
+                while i >= 0 and n-i <= length:
                     comb[i] = 1
-                oneIndex = size-min(length,size)
-                twoIndex = size-1
+                    i -= 1
+                oneIndex = i+1
+                twoIndex = n-1
                 while(sum(comb) < length):
                     twoIndex -= 1
                     comb[twoIndex] = 2
                 while(oneIndex < twoIndex):
-                    self.genWord(comb)
+                    arr[length-1].append(np.copy(comb))
                     twoIndex -= 1
                     comb[twoIndex] = 2
                     comb[oneIndex] = 0
                     oneIndex+=1
             #i-j
-            if(length < size):
-                for start in range(0,size-length):
+            if(length < n):
+                for start in range(0,n-length):
                     comb = np.zeros(size,dtype=int)
                     for k in range(start,start+length):
                         comb[k] =1
-                    self.genWord(comb)
+                    arr[length-1].append(comb)
             #2i
             if(length % 2 == 1):
                 comb=np.zeros(size,dtype=int)
-                comb[-1] = 1
-                for k in range(size-2,size-2-length//2,-1):
+                comb[n-1] = 1
+                for k in range(n-2,n-2-length//2,-1):
                     comb[k] = 2
-                self.genWord(comb)
-    def __genTypeCAffine(self):
-        size=self.n+1
-        delta = self.delta
-        simpleLetterOrdering = rootSystem([i for i in range(1,size)],'C').arr
-        weights = [None]*len(simpleLetterOrdering)
-        for row in range(len(simpleLetterOrdering)):
-            weights[row] = [None]*len(simpleLetterOrdering[row])
-            for root in range(len(simpleLetterOrdering[row])):
-                weights[row][root] = simpleLetterOrdering[row][root].weights.tolist()+ [0]
-        for deltaCount in range(self.k+1):
-            if(deltaCount > 0):
-                self.genWord(deltaCount*delta)
-            for length in range(1,2*size-2):
-                if(deltaCount > 0 or length > 1):
-                    for comb in weights[length-1]:
-                        self.genWord(comb+deltaCount*delta)
-                    for comb in weights[-length]:
-                        self.genWord((deltaCount+1)*delta - comb)
-                                
+                arr[length-1].append(comb)
+        if(affine):
+            delta = rootSystem.TypeCDelta(n)
+            for length in range(1,len(arr)):
+                for i in arr[-length-1]:
+                    if(i is None or i[-1] == 1):
+                        break
+                    arr[length-1].append(delta - i)
+            arr[-1] = np.array([None])
+            arr[-1][0] = delta
+        return arr
     def standardFactorization(self,wordToFactor):
         if(type(wordToFactor) is not word):
             res = self.getWords(np.array(wordToFactor,dtype=int))
@@ -351,12 +394,13 @@ class rootSystem:
         return matches
     def isImaginary(self,combinations):
         return (self.affine and sum(combinations) % self.deltaWeight == 0)
-    def genWord(self, combinations):
-        combinations = np.array(combinations,dtype=int)
+    def __genWord(self, combinations):
+        if(type(combinations)is not np.array):   
+            combinations = np.array(combinations,dtype=int)
         weight = sum(combinations)
+        if(weight == 1):
+            return
         imaginary = self.isImaginary(combinations)
-        if(imaginary and weight == self.deltaWeight):
-            self.baseWeights.append(self.delta)
         potentialOptions = []
         if (weight > len(self.arr)+1):
             return None
@@ -364,8 +408,7 @@ class rootSystem:
         for i in self.arr[0]:
             if i < minSubRoot:
                 minSubRoot = i
-        baseWeights = self.baseWeights
-        for i in baseWeights:
+        for i in self.baseWeights:
             i = np.copy(i)
             j = combinations-i
             if(len(self.getWords(j)) == 0):
@@ -402,35 +445,30 @@ class rootSystem:
         if(len(self.arr) < weight):
             self.arr.append([])
         if not imaginary:
-            match = potentialOptions[-1][0]                
-            if(not self.affine):
-                self.baseWeights.append(match.weights)
-            else:
-                if(weight < self.deltaWeight):
-                    self.baseWeights.append(match.weights)
+            match = potentialOptions[-1][0]
             self.arr[weight-1].append(match)
             self.weightToWordDictionary[combinations.tobytes()] = [match]
-            return match
         else:
             potentialOptions = list(set(potentialOptions))
             potentialOptions.sort(reverse=True)
+            matrix = np.zeros((self.n+1,self.n+1), dtype = int)
             while(not self.hBracket(potentialOptions[0][1],potentialOptions[0][2]).any()):
                 potentialOptions.pop(0)
             potentialOptions[0][0].hs = self.hBracket(potentialOptions[0][1],potentialOptions[0][2])
             liPotentialOptions = [potentialOptions[0][0]]
-            liset = [potentialOptions[0][0].hs]
+            matrix[0] = potentialOptions[0][0].hs
             index = 1
-            while(len(liset) < len(self.ordering)-1):
+            row = 1
+            while(row < self.n):
                 #change to only use non-zero matrix entries
                 potentialOptions[index][0].hs = self.hBracket(potentialOptions[index][1],potentialOptions[index][2])
-                liprime = liset + [potentialOptions[index][0].hs]
-                if(np.linalg.matrix_rank(np.vstack(liprime)) == len(liprime)):
-                    liset = liprime
+                matrix[row] = potentialOptions[index][0].hs
+                if(np.linalg.matrix_rank(matrix) == row+1):
                     liPotentialOptions.append(potentialOptions[index][0])
+                    row+=1
                 index += 1
             self.arr[-1].extend(liPotentialOptions)
             self.weightToWordDictionary[combinations.tobytes()] = liPotentialOptions
-            return liPotentialOptions
     def getBaseWeights(self):
         return np.array(self.baseWeights)
     def getWordsByBase(self):
@@ -480,6 +518,8 @@ class rootSystem:
         return exceptions
     def TypeADelta(n:int):
         return np.ones(n+1,dtype=int)
+    def TypeADelta(n:int):
+        return np.ones(n+1,dtype=int)
     def TypeBDelta(n:int):
         #TODO:
         return [0]
@@ -491,6 +531,8 @@ class rootSystem:
     def TypeDDelta(n:int):
         #TODO:
         return[0]
+    def TypeGDelta():
+        return np.array([2,3,1],dtype=int)
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("type",choices=["C","c","A","a","b","B",'d','D'])
@@ -521,13 +563,6 @@ def main():
                 order.append(0)
     else:
         order = [int(i) for i in orderInput]
-    if type == "A":
-        Atype(order,affineCount)
-    elif type == "B":
-        Btype(order,affineCount)
-    elif type == "C":
-        Ctype(order,affineCount)
-    elif type == "D":
-        Dtype(order,affineCount)    
+    rootsystem = rootSystem(order,type,affineCount) 
 if __name__ == '__main__':    
     main()
