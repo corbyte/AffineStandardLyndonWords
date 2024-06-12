@@ -244,19 +244,6 @@ class rootSystem:
                     comb[twoIndex] = 2
                     comb[oneIndex] = 0
                     oneIndex+=1
-    def __genTypeGAffine(self):
-        size=self.n+1
-        delta = self.delta
-        weights = rootSystem.getGWeights(True)
-        for deltaCount in range(self.k+1):
-            if(deltaCount > 0):
-                self.__genWord(deltaCount*delta)
-            for length in range(1,sum(self.delta0)+1):
-                if(deltaCount > 0 or length > 1):
-                    for comb in weights[length-1]:
-                        self.__genWord(comb+deltaCount*delta)
-                    for comb in weights[-length]:
-                        self.__genWord((deltaCount+1)*delta - comb)
     def getAWeights(n,affine=False):
         size = n
         if(affine):
@@ -269,15 +256,16 @@ class rootSystem:
                     comb[k] = 1
                 arr[length-1].append(comb)
         if(affine):
-            delta = rootSystem.TypeADelta(n)
-            for length in range(1,size):
-                for i in arr[-length-1]:
-                    if(i is None or i[-1] == 1):
-                        break
-                    arr[length-1].append(delta - i)
-                    index += 1
-            arr[-1].append(delta)
+            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeADelta(n))
         return arr    
+    def __genAffineBaseWeights(arr,delta):
+        for length in range(1,len(arr)):
+            for i in arr[-length-1]:
+                if(i is None or i[-1] == 1):
+                    break
+                arr[length-1].append(delta - i)
+            arr[-1] = np.array([None])
+            arr[-1][0] = delta
     def getGWeights(affine:bool=False):
         if(affine):
             arr = [[] for i in range(6)]
@@ -288,14 +276,7 @@ class rootSystem:
                 i.append(0)
             arr[sum(i)-1].append(np.array(i,dtype=int))
         if(affine):
-            delta = rootSystem.TypeGDelta()
-            for length in range(1,len(arr)):
-                for i in arr[-length-1]:
-                    if(i is None or i[-1] == 1):
-                        break
-                    arr[length-1].append(delta - i)
-            arr[-1] = np.array([None])
-            arr[-1][0] = delta
+            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeGDelta())
         return arr
     def getCWeights(n,affine:bool=False):
         size = n
@@ -342,14 +323,7 @@ class rootSystem:
                     comb[k] = 2
                 arr[length-1].append(comb)
         if(affine):
-            delta = rootSystem.TypeCDelta(n)
-            for length in range(1,len(arr)):
-                for i in arr[-length-1]:
-                    if(i is None or i[-1] == 1):
-                        break
-                    arr[length-1].append(delta - i)
-            arr[-1] = np.array([None])
-            arr[-1][0] = delta
+            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeCDelta(n))
         return arr
     def standardFactorization(self,wordToFactor):
         if(type(wordToFactor) is not word):
@@ -516,8 +490,6 @@ class rootSystem:
                             if( betaWord<sumWord == alphaWord < sumWord):
                                 exceptions.append((betaWord,alphaWord))
         return exceptions
-    def TypeADelta(n:int):
-        return np.ones(n+1,dtype=int)
     def TypeADelta(n:int):
         return np.ones(n+1,dtype=int)
     def TypeBDelta(n:int):
