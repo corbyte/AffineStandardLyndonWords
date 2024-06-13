@@ -125,10 +125,13 @@ class rootSystem:
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
         if(type == 'A'):
             multiDimBase = rootSystem.getAWeights(self.n,self.affine)
+        elif(type == 'B'):
+            multiDimBase = rootSystem.getBWeights(self.n,self.affine)
         elif(type == 'C'):
             multiDimBase = rootSystem.getCWeights(self.n,self.affine)
         elif(type == 'G'):
             multiDimBase = rootSystem.getGWeights(self.affine)
+        #TODO: Maybe it'd be faster to just generate the base weights and then sort them by length
         self.baseWeights = np.array([i for j in multiDimBase for i in j],dtype=object)
         if(self.affine):
             self.cartan_matrix = np.zeros((self.n+1,self.n+1), dtype=int)
@@ -143,10 +146,9 @@ class rootSystem:
                 self.cartan_matrix[-1] = extension
             elif (type == 'B'):
                 self.delta = rootSystem.TypeBDelta(self.n) 
-                extension[1] = -1
-                extension[-1] = 2
-                self.cartan_matrix[:-1] = extension
-                self.cartan_matrix[:,:-1] = extension
+                self.cartan_matrix[-1,-1] =2
+                self.cartan_matrix[-1,1] = -1
+                self.cartan_matrix[1,-1] = -1
             elif(type == 'C'):
                 self.delta = rootSystem.TypeCDelta(self.n)
                 self.cartan_matrix[-1,-1]= 2
@@ -159,58 +161,25 @@ class rootSystem:
                 self.cartan_matrix[0,-1] = -1
             self.deltaWeight = sum(self.delta)
             #Generates the words
-            self.__genAffine()
+            self.__genAffineRootSystem()
         else:
             if(type == 'A'):
-                self.__genFinite()
+                self.__genFiniteRootSystem()
             elif(type == 'B'):
-                self.__genTypeBFinite()
+                self.__genFiniteRootSystem()
             elif(type == 'C'):
-                self.__genFinite()
+                self.__genFiniteRootSystem()
             elif(type == 'D'):
                 self.__genTypeDFinite()
             elif(type == 'G'):
-                self.__genFinite()
-    def __genFinite(self):
+                self.__genFiniteRootSystem()
+    def __genFiniteRootSystem(self):
         for i in self.baseWeights:
             self.__genWord(i)
-    def __genAffine(self):
+    def __genAffineRootSystem(self):
         for k in range(self.k+1):
             for i in self.baseWeights:
                 self.__genWord(i + self.delta * k)
-    def __genTypeBFinite(self):
-        size = self.n
-        for length in range(2,2*size):
-            #i
-            if(length <= size):
-                comb = np.zeros(size,dtype=int)
-                for i in range(size-length,size):
-                    comb[i] = 1
-                self.__genWord(comb)
-                if(length != size):
-                    #ei - ej
-                    for start in range(0,size - length):
-                        comb = np.zeros(size,dtype=int)
-                        for k in range(start,start+length):
-                            comb[k] = 1
-                        self.__genWord(comb)
-            #ei + ej
-            if(length >= 3):
-                comb = np.zeros(size,dtype=int)
-                comb[-1] = 2
-                for i in range(size-min(length-1,size),size-1):
-                    comb[i] = 1
-                oneIndex = size-min(length-1,size)
-                twoIndex = size-1
-                while(sum(comb) < length):
-                    twoIndex -= 1
-                    comb[twoIndex] = 2
-                while(oneIndex < twoIndex):
-                    self.__genWord(comb)
-                    twoIndex -= 1
-                    comb[twoIndex] = 2
-                    comb[oneIndex] = 0
-                    oneIndex+=1    
     def __genTypeDFinite(self):
         size=self.n
         for length in range(2,2*size-2):
@@ -257,15 +226,60 @@ class rootSystem:
                 arr[length-1].append(comb)
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeADelta(n))
-        return arr    
+        return arr 
+    def getBWeights(n,affine=False):
+        if(affine):
+            size = n+1
+            arr = [[] for i in range(n*2)]
+        else:
+            size = n
+            arr = [[] for i in range(n*2-1)]
+        for i in range(n):
+            comb = np.zeros(size,dtype=int)
+            comb[i] = 1
+            arr[0].append(comb)
+        for length in range(2,2*n):
+            #i
+            if(length <= n):
+                comb = np.zeros(size,dtype=int)
+                for i in range(n-length,n):
+                    comb[i] = 1
+                arr[length-1].append(comb)
+                if(length != n):
+                    #ei - ej
+                    for start in range(0,n - length):
+                        comb = np.zeros(size,dtype=int)
+                        for k in range(start,start+length):
+                            comb[k] = 1
+                        arr[length-1].append(comb)
+            #ei + ej
+            if(length >= 3):
+                comb = np.zeros(size,dtype=int)
+                comb[n-1] = 2
+                for i in range(n-min(length-1,n),n-1):
+                    comb[i] = 1
+                oneIndex = n-min(length-1,n)
+                twoIndex = n-1
+                while(sum(comb) < length):
+                    twoIndex -= 1
+                    comb[twoIndex] = 2
+                while(oneIndex < twoIndex):
+                    arr[length-1].append(np.array(comb,dtype=int))
+                    twoIndex -= 1
+                    comb[twoIndex] = 2
+                    comb[oneIndex] = 0
+                    oneIndex+=1
+        if(affine):
+            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeBDelta(n))
+        return arr
     def __genAffineBaseWeights(arr,delta):
         for length in range(1,len(arr)):
             for i in arr[-length-1]:
                 if(i is None or i[-1] == 1):
                     break
                 arr[length-1].append(delta - i)
-            arr[-1] = np.array([None])
-            arr[-1][0] = delta
+        arr[-1] = np.array([None])
+        arr[-1][0] = delta
     def getGWeights(affine:bool=False):
         if(affine):
             arr = [[] for i in range(6)]
@@ -493,8 +507,10 @@ class rootSystem:
     def TypeADelta(n:int):
         return np.ones(n+1,dtype=int)
     def TypeBDelta(n:int):
-        #TODO:
-        return [0]
+        arr = np.repeat(2,n+1)
+        arr[-1] = 1
+        arr[0] = 1
+        return arr
     def TypeCDelta(n:int):
         delta = np.repeat(2,n+1)
         delta[-1] = 1
