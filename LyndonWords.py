@@ -124,15 +124,14 @@ class rootSystem:
         for i in self.arr[0]:
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
         if(type == 'A'):
-            multiDimBase = rootSystem.getAWeights(self.n,self.affine)
+            self.baseWeights = rootSystem.getAWeights(self.n,self.affine)
         elif(type == 'B'):
-            multiDimBase = rootSystem.getBWeights(self.n,self.affine)
+            self.baseWeights = rootSystem.getBWeights(self.n,self.affine)
         elif(type == 'C'):
-            multiDimBase = rootSystem.getCWeights(self.n,self.affine)
+            self.baseWeights = rootSystem.getCWeights(self.n,self.affine)
         elif(type == 'G'):
-            multiDimBase = rootSystem.getGWeights(self.affine)
+            self.baseWeights = rootSystem.getGWeights(self.affine)
         #TODO: Maybe it'd be faster to just generate the base weights and then sort them by length
-        self.baseWeights = np.array([i for j in multiDimBase for i in j],dtype=object)
         if(self.affine):
             self.cartan_matrix = np.zeros((self.n+1,self.n+1), dtype=int)
             self.cartan_matrix[:-1,:-1] = np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int)
@@ -217,41 +216,41 @@ class rootSystem:
         size = n
         if(affine):
             size += 1
-        arr = [[] for i in range(size)]
+        arr = []
         for length in range(1,n+1):
             for start in range(0,n - length + 1):
                 comb = np.zeros(size,dtype=int)
                 for k in range(start,start+length):
                     comb[k] = 1
-                arr[length-1].append(comb)
+                arr.append(comb)
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeADelta(n))
+        arr.sort(key = sum)
         return arr 
     def getBWeights(n,affine=False):
         if(affine):
             size = n+1
-            arr = [[] for i in range(n*2)]
         else:
             size = n
-            arr = [[] for i in range(n*2-1)]
+        arr = []
         for i in range(n):
             comb = np.zeros(size,dtype=int)
             comb[i] = 1
-            arr[0].append(comb)
+            arr.append(comb)
         for length in range(2,2*n):
             #i
             if(length <= n):
                 comb = np.zeros(size,dtype=int)
                 for i in range(n-length,n):
                     comb[i] = 1
-                arr[length-1].append(comb)
+                arr.append(comb)
                 if(length != n):
                     #ei - ej
                     for start in range(0,n - length):
                         comb = np.zeros(size,dtype=int)
                         for k in range(start,start+length):
                             comb[k] = 1
-                        arr[length-1].append(comb)
+                        arr.append(comb)
             #ei + ej
             if(length >= 3):
                 comb = np.zeros(size,dtype=int)
@@ -264,45 +263,38 @@ class rootSystem:
                     twoIndex -= 1
                     comb[twoIndex] = 2
                 while(oneIndex < twoIndex):
-                    arr[length-1].append(np.array(comb,dtype=int))
+                    arr.append(np.array(comb,dtype=int))
                     twoIndex -= 1
                     comb[twoIndex] = 2
                     comb[oneIndex] = 0
                     oneIndex+=1
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeBDelta(n))
+        arr.sort(key = sum)
         return arr
-    def __genAffineBaseWeights(arr,delta):
-        for length in range(1,len(arr)):
-            for i in arr[-length-1]:
-                if(i is None or i[-1] == 1):
-                    break
-                arr[length-1].append(delta - i)
-        arr[-1] = np.array([None])
-        arr[-1][0] = delta
+    def __genAffineBaseWeights(arr,delta:np.array):
+        for i in arr:
+            if(i[-1] == 1):
+                break
+            arr.append(delta - i)
+        arr.append(delta)
     def getGWeights(affine:bool=False):
-        if(affine):
-            arr = [[] for i in range(6)]
-        else:
-            arr = [[] for i in range(5)]
+        arr = []
         for i in [[1,0],[0,1],[1,1],[1,2],[1,3],[2,3]]:
-            if(affine):
-                i.append(0)
-            arr[sum(i)-1].append(np.array(i,dtype=int))
+            arr.append(np.array(i,dtype=int))
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeGDelta())
+        arr.sort(key = sum)
         return arr
     def getCWeights(n,affine:bool=False):
         size = n
         if(affine):
             size+=1
-            arr = [[] for i in range(2*size-1)]
-        else:
-            arr = [[] for i in range(1,2*n)]
+        arr = []
         for i in range(n):
             comb = np.zeros(size,dtype=int)
             comb[i] = 1
-            arr[0].append(comb)
+            arr.append(comb)
         for length in range(2,2*n):
             if(length <= 2*n -2):
                 #i+j
@@ -317,7 +309,7 @@ class rootSystem:
                     twoIndex -= 1
                     comb[twoIndex] = 2
                 while(oneIndex < twoIndex):
-                    arr[length-1].append(np.copy(comb))
+                    arr.append(np.copy(comb))
                     twoIndex -= 1
                     comb[twoIndex] = 2
                     comb[oneIndex] = 0
@@ -328,16 +320,17 @@ class rootSystem:
                     comb = np.zeros(size,dtype=int)
                     for k in range(start,start+length):
                         comb[k] =1
-                    arr[length-1].append(comb)
+                    arr.append(comb)
             #2i
             if(length % 2 == 1):
                 comb=np.zeros(size,dtype=int)
                 comb[n-1] = 1
                 for k in range(n-2,n-2-length//2,-1):
                     comb[k] = 2
-                arr[length-1].append(comb)
+                arr.append(comb)
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeCDelta(n))
+        arr.sort(key = sum)
         return arr
     def standardFactorization(self,wordToFactor):
         if(type(wordToFactor) is not word):
@@ -455,7 +448,7 @@ class rootSystem:
                     liPotentialOptions.append(potentialOptions[index][0])
                     row+=1
                 index += 1
-            self.arr[-1].extend(liPotentialOptions)
+            self.arr[-1] = liPotentialOptions
             self.weightToWordDictionary[combinations.tobytes()] = liPotentialOptions
     def getBaseWeights(self):
         return np.array(self.baseWeights)
