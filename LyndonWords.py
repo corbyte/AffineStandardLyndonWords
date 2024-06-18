@@ -120,6 +120,7 @@ class rootSystem:
             self.n = len(ordering)
         self.ordering:letterOrdering = letterOrdering(ordering)
         self.arr.append([word([i],len(self.ordering)) for i in self.ordering.order])
+        self.minWord = self.arr[0][0]
         self.weightToWordDictionary = {}
         for i in self.arr[0]:
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
@@ -281,6 +282,8 @@ class rootSystem:
     def getGWeights(affine:bool=False):
         arr = []
         for i in [[1,0],[0,1],[1,1],[1,2],[1,3],[2,3]]:
+            if(affine):
+                i.append(0)
             arr.append(np.array(i,dtype=int))
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeGDelta())
@@ -379,40 +382,34 @@ class rootSystem:
         if(type(combinations)is not np.array):   
             combinations = np.array(combinations,dtype=int)
         weight = sum(combinations)
-        if(weight == 1):
+        if(weight == 1 or weight > len(self.arr)+1):
             return
         imaginary = self.isImaginary(combinations)
         potentialOptions = []
-        if (weight > len(self.arr)+1):
-            return None
-        minSubRoot  = self.arr[0][0]
-        for i in self.arr[0]:
-            if i < minSubRoot:
-                minSubRoot = i
+        minSubRoot  = self.minWord
         for i in self.baseWeights:
             i = np.copy(i)
             j = combinations-i
             if(len(self.getWords(j)) == 0):
                 continue
-            iImaginary = self.isImaginary(i)
-            jImaginary = self.isImaginary(j)
-            while(min(j) >= 0 and sum(i) <= len(self.arr)):
-                if(self.affine and iImaginary and jImaginary):
-                    break
+            eitherRootImaginary = self.isImaginary(i) or self.isImaginary(j)
+            if(imaginary and eitherRootImaginary):
+                continue
+            while(sum(j) > 0):
                 words1 = self.getWords(i)
                 for word1 in words1:
-                    if(word1 < minSubRoot and not imaginary):
+                    if(not imaginary and word1 < minSubRoot):
                         continue
                     words2 = self.getWords(j)
                     for word2 in words2:
-                        if(word2 < minSubRoot and not imaginary):
+                        if(not imaginary and word2 < minSubRoot):
                             continue
                         if(word1< word2):
                             (a,b) = (word1,word2)
                         else:
                             (a,b) = (word2,word1)
                         newWord = a + b
-                        if(self.affine and (iImaginary or jImaginary)):
+                        if(self.affine and eitherRootImaginary):
                             bracket = self.eBracket(a,b)
                             #Checks to see if bracket is non-zero
                             if not bracket.any():
@@ -441,7 +438,6 @@ class rootSystem:
             index = 1
             row = 1
             while(row < self.n):
-                #change to only use non-zero matrix entries
                 potentialOptions[index][0].hs = self.hBracket(potentialOptions[index][1],potentialOptions[index][2])
                 matrix[row] = potentialOptions[index][0].hs
                 if(np.linalg.matrix_rank(matrix) == row+1):
