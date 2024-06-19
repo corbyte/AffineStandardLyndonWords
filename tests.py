@@ -3,7 +3,7 @@ from LyndonWords import *
 import numpy
 def toSet(lW):
     resultSet = set()
-    for i in lW.arr:
+    for i in lW.weightToWordDictionary.values():
         for j in i:
             resultSet.add(str(j))
     return resultSet
