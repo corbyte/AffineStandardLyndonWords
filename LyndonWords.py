@@ -31,13 +31,12 @@ class letter:
         return self.index >= other.index
 class word:
     #Maybe change to sparse matrix
-    def __init__(self, wordArray,l,imaginary=False,es=None,hs=None):
+    def __init__(self, wordArray,l,weights,imaginary=False,es=None,hs=None):
         self.string = np.array(wordArray,dtype=letter)
         self.imaginary=imaginary
         self.hs = None
-        self.weights = np.zeros(l,dtype=int)
-        for i in self.string:
-            self.weights[i.rootIndex-1] += 1
+        self.weights = weights
+        self.degree = sum(self.weights)
         self.weights.flags.writeable = False
     def __len__(self):
         return len(self.string)
@@ -76,7 +75,7 @@ class word:
     def __ne__(self,other):
         return not (self == other)
     def __add__(self,other):
-        return word(np.concatenate((self.string,other.string),dtype=word),len(self.weights)) 
+        return word(np.concatenate((self.string,other.string),dtype=word),len(self.weights),self.weights + other.weights) 
 class letterOrdering:
     def __init__(self, letterOrdering):
         letterOrdering = [letter(str(i),i) for i in letterOrdering]
@@ -98,17 +97,17 @@ class rootSystem:
         else:
             re = A
             im = B
-        weights = re.weights - (self.delta * sum(re.weights) // sum(self.delta))
+        weights = re.weights - (self.delta * re.degree // self.deltaDegree)
         return np.any(np.logical_and(weights!= 0, (im.hs @self.cartan_matrix) != 0))
-    def hBracket(self,A,B):
+    def hBracket(self,word):
         #FIXME:
-        newA = (A.weights - (self.delta *A.weights[-1]))
-        newB = (B.weights - (self.delta * B.weights[-1]))
+        (a,b) = self.costandardFactorization(word)
+        newA = (a.weights - (self.delta *a.weights[-1]))
+        newB = (b.weights - (self.delta * b.weights[-1]))
         if(np.any(newA < 0)):
             return newB
         return newA
     def __init__(self, ordering,type,k=0):
-        self.arr = []
         type = type.upper()
         self.k = k
         self.affine = k != 0
@@ -119,10 +118,17 @@ class rootSystem:
         else:
             self.n = len(ordering)
         self.ordering:letterOrdering = letterOrdering(ordering)
-        self.arr.append([word([i],len(self.ordering)) for i in self.ordering.order])
-        self.minWord = self.arr[0][0]
         self.weightToWordDictionary = {}
-        for i in self.arr[0]:
+        self.minWord = None
+        def weightsGeneration(letter):
+            arr = np.zeros(len(self.ordering),dtype=int)
+            arr[letter.rootIndex-1] = 1
+            return arr
+        for i in [word([i],len(self.ordering),weightsGeneration(i)) for i in self.ordering.order]:
+            if(self.minWord is None):
+                self.minWord = i
+            elif(self.minWord > i):
+                self.minWord = i
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
         if(type == 'A'):
             self.baseWeights = rootSystem.getAWeights(self.n,self.affine)
@@ -159,7 +165,7 @@ class rootSystem:
                 self.cartan_matrix[-1,-1] = 2
                 self.cartan_matrix[-1,0] = -1
                 self.cartan_matrix[0,-1] = -1
-            self.deltaWeight = sum(self.delta)
+            self.deltaDegree = sum(self.delta)
             #Generates the words
             self.__genAffineRootSystem()
         else:
@@ -335,7 +341,7 @@ class rootSystem:
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeCDelta(n))
         arr.sort(key = sum)
         return arr
-    def standardFactorization(self,wordToFactor):
+    def costandardFactorization(self,wordToFactor):
         if(type(wordToFactor) is not word):
             res = self.getWords(np.array(wordToFactor,dtype=int))
             if(len(res) == 0):
@@ -360,7 +366,8 @@ class rootSystem:
                     continue
                 return (self.getWords(wordToFactorWeight-weight)[0],rightWord)
     def getWords(self, combination):
-        combination = np.array(combination,dtype=int)
+        if(type(combination) is not np.array):
+            combination = np.array(combination,dtype=int)
         if(not combination.tobytes() in self.weightToWordDictionary):
             return []
         else:
@@ -377,17 +384,20 @@ class rootSystem:
             newWord=self.getWords(weight + k*self.delta)
         return matches
     def isImaginary(self,combinations):
-        return (self.affine and sum(combinations) % self.deltaWeight == 0)
+        return (self.affine and sum(combinations) % self.deltaDegree == 0)
     def __genWord(self, combinations):
         if(type(combinations)is not np.array):   
             combinations = np.array(combinations,dtype=int)
         weight = sum(combinations)
-        if(weight == 1 or weight > len(self.arr)+1):
+        if(weight == 1):
             return
         imaginary = self.isImaginary(combinations)
         potentialOptions = []
-        minSubRoot  = self.minWord
+        maxWord  = self.minWord
+        checked = set()
         for i in self.baseWeights:
+            if i.tobytes() in checked:
+                continue
             i = np.copy(i)
             j = combinations-i
             if(len(self.getWords(j)) == 0):
@@ -398,53 +408,50 @@ class rootSystem:
             while(sum(j) > 0):
                 words1 = self.getWords(i)
                 for word1 in words1:
-                    if(not imaginary and word1 < minSubRoot):
+                    if(not imaginary and word1 < maxWord):
                         continue
                     words2 = self.getWords(j)
                     for word2 in words2:
-                        if(not imaginary and word2 < minSubRoot):
+                        if(not imaginary and word2 < maxWord):
                             continue
                         if(word1< word2):
                             (a,b) = (word1,word2)
                         else:
                             (a,b) = (word2,word1)
-                        newWord = a + b
                         if(self.affine and eitherRootImaginary):
                             bracket = self.eBracket(a,b)
                             #Checks to see if bracket is non-zero
                             if not bracket.any():
                                 continue
-                        minSubRoot = a
-                        potentialOptions.append((newWord,a,b))
+                        if(imaginary):
+                            potentialOptions.append(a+b)
+                            continue
+                        maxWord = a+b
                 if(not self.affine):
                     break
                 i += self.delta
                 j -= self.delta
-        if(len(self.arr) < weight):
-            self.arr.append([])
+            if(self.affine):
+                j+= self.delta
+                checked.add(j.tobytes())
         if not imaginary:
-            match = potentialOptions[-1][0]
-            self.arr[weight-1].append(match)
-            self.weightToWordDictionary[combinations.tobytes()] = [match]
+            self.weightToWordDictionary[combinations.tobytes()] = [maxWord]
         else:
             potentialOptions = list(set(potentialOptions))
             potentialOptions.sort(reverse=True)
             matrix = np.zeros((self.n+1,self.n+1), dtype = int)
-            while(not self.hBracket(potentialOptions[0][1],potentialOptions[0][2]).any()):
-                potentialOptions.pop(0)
-            potentialOptions[0][0].hs = self.hBracket(potentialOptions[0][1],potentialOptions[0][2])
-            liPotentialOptions = [potentialOptions[0][0]]
-            matrix[0] = potentialOptions[0][0].hs
+            potentialOptions[0].hs = self.hBracket(potentialOptions[0])
+            liPotentialOptions = [potentialOptions[0]]
+            matrix[0] = potentialOptions[0].hs
             index = 1
             row = 1
             while(row < self.n):
-                potentialOptions[index][0].hs = self.hBracket(potentialOptions[index][1],potentialOptions[index][2])
-                matrix[row] = potentialOptions[index][0].hs
+                potentialOptions[index].hs = self.hBracket(potentialOptions[index])
+                matrix[row] = potentialOptions[index].hs
                 if(np.linalg.matrix_rank(matrix) == row+1):
-                    liPotentialOptions.append(potentialOptions[index][0])
+                    liPotentialOptions.append(potentialOptions[index])
                     row+=1
                 index += 1
-            self.arr[-1] = liPotentialOptions
             self.weightToWordDictionary[combinations.tobytes()] = liPotentialOptions
     def getBaseWeights(self):
         return np.array(self.baseWeights)
@@ -482,14 +489,12 @@ class rootSystem:
         return np.array(returnarr, dtype=object)
     def checkConvexity(self):
         exceptions = []
-        for length in range(len(self.arr)):
-            for sumWord in self.arr[length]:
-                for j in range(length):
-                    for alphaWord in self.arr[j]:
-                        diff = sumWord.weights - alphaWord.weights
-                        if(min(diff) < 0):
-                            continue
-                        for betaWord in self.getWords(diff):
+        wordsByLength = sorted(list(self.weightToWordDictionary.values()),key=lambda x:x[0].degree)
+        for wordIndex in range(1,len(wordsByLength)):
+            for sumWord in wordsByLength[wordIndex]:
+                for alphaWords in wordsByLength[:wordIndex]:
+                    for alphaWord in alphaWords:
+                        for betaWord in self.getWords(sumWord.weights - alphaWord.weights):
                             if( betaWord<sumWord == alphaWord < sumWord):
                                 exceptions.append((betaWord,alphaWord))
         return exceptions
