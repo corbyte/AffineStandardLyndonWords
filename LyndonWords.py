@@ -136,6 +136,8 @@ class rootSystem:
             self.baseWeights = rootSystem.getBWeights(self.n,self.affine)
         elif(type == 'C'):
             self.baseWeights = rootSystem.getCWeights(self.n,self.affine)
+        elif(type =='D'):
+            self.baseWeights = rootSystem.getDWeights(self.n,self.affine)
         elif(type == 'G'):
             self.baseWeights = rootSystem.getGWeights(self.affine)
         #TODO: Maybe it'd be faster to just generate the base weights and then sort them by length
@@ -160,6 +162,11 @@ class rootSystem:
                 self.cartan_matrix[-1,-1]= 2
                 self.cartan_matrix[-1,0] = -1
                 self.cartan_matrix[0,-1] = -2
+            elif(type == 'D'):
+                self.delta = rootSystem.TypeDDelta(self.n)
+                self.cartan_matrix[-1,-1] = 2
+                self.cartan_matrix[-1,1] = -1
+                self.cartan_matrix[1,-1] = -1
             elif(type == 'G'):
                 self.delta = rootSystem.TypeGDelta()
                 self.cartan_matrix[-1,-1] = 2
@@ -186,39 +193,51 @@ class rootSystem:
         for k in range(self.k+1):
             for i in self.baseWeights:
                 self.__genWord(i + self.delta * k)
-    def __genTypeDFinite(self):
-        size=self.n
-        for length in range(2,2*size-2):
-            #i-j
-            for start in range(0,size - length):
+    def getDWeights(n,affine=False):
+        size=n
+        if(affine):
+            size = n+1
+        arr = []
+        for length in range(1,n+1):
+            for start in range(0,n - length + 1):
                 comb = np.zeros(size,dtype=int)
                 for k in range(start,start+length):
                     comb[k] = 1
-                self.__genWord(comb)
+                arr.append(comb)
+        for length in range(2,2*size-2):
+            #i-j
+            for start in range(0,n - length):
+                comb = np.zeros(size,dtype=int)
+                for k in range(start,start+length):
+                    comb[k] = 1
+                arr.append(comb)
             #i+j
             if(length < size):
                 comb=np.zeros(size,dtype=int)
                 comb[-1] =1
                 for i in range(-(length+1),-2,1):
                     comb[i] = 1
-                self.__genWord(comb)
+                arr.append(comb)
             if(length >= 3):
                 comb=np.zeros(size,dtype=int)
                 comb[-1] = 1
                 comb[-2] = 1
-                for i in range(size-min(length,size),size-2):
+                for i in range(n-min(length,n),n-2):
                     comb[i] = 1
-                oneIndex = size-min(length,size)
+                oneIndex = size-min(length,n)
                 twoIndex = size-2
                 while(sum(comb) < length):
                     twoIndex -= 1
                     comb[twoIndex] = 2
                 while(oneIndex < twoIndex):
-                    self.__genWord(comb)
+                    arr.append(np.copy(comb))
                     twoIndex -= 1
                     comb[twoIndex] = 2
                     comb[oneIndex] = 0
                     oneIndex+=1
+        if(affine):
+            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeDDelta(n))
+        return arr
     def getAWeights(n,affine=False):
         size = n
         if(affine):
@@ -511,8 +530,11 @@ class rootSystem:
         delta[-2] = 1
         return delta
     def TypeDDelta(n:int):
-        #TODO:
-        return[0]
+        delta = np.repeat(2,n+1)
+        delta[-1] =1
+        delta[-2] = 1
+        delta[0] = 1
+        return delta
     def TypeGDelta():
         return np.array([2,3,1],dtype=int)
 def main():
