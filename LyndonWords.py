@@ -100,7 +100,6 @@ class rootSystem:
         weights = re.weights - (self.delta * re.degree // self.deltaDegree)
         return np.any(np.logical_and(weights!= 0, (im.hs @self.cartan_matrix) != 0))
     def hBracket(self,word):
-        #FIXME:
         (a,b) = self.costandardFactorization(word)
         newA = (a.weights - (self.delta *a.weights[-1]))
         newB = (b.weights - (self.delta * b.weights[-1]))
@@ -176,16 +175,7 @@ class rootSystem:
             #Generates the words
             self.__genAffineRootSystem()
         else:
-            if(type == 'A'):
-                self.__genFiniteRootSystem()
-            elif(type == 'B'):
-                self.__genFiniteRootSystem()
-            elif(type == 'C'):
-                self.__genFiniteRootSystem()
-            elif(type == 'D'):
-                self.__genTypeDFinite()
-            elif(type == 'G'):
-                self.__genFiniteRootSystem()
+            self.__genFiniteRootSystem()
     def __genFiniteRootSystem(self):
         for i in self.baseWeights:
             self.__genWord(i)
@@ -198,13 +188,11 @@ class rootSystem:
         if(affine):
             size = n+1
         arr = []
-        for length in range(1,n+1):
-            for start in range(0,n - length + 1):
-                comb = np.zeros(size,dtype=int)
-                for k in range(start,start+length):
-                    comb[k] = 1
-                arr.append(comb)
-        for length in range(2,2*size-2):
+        for i in range(n):
+            comb = np.zeros(size,dtype=int)
+            comb[i] = 1
+            arr.append(comb)
+        for length in range(2,2*n-2):
             #i-j
             for start in range(0,n - length):
                 comb = np.zeros(size,dtype=int)
@@ -212,16 +200,16 @@ class rootSystem:
                     comb[k] = 1
                 arr.append(comb)
             #i+j
-            if(length < size):
+            if(length < n):
                 comb=np.zeros(size,dtype=int)
-                comb[-1] =1
-                for i in range(-(length+1),-2,1):
+                comb[n-1] =1
+                for i in range(n-1-length,n-2):
                     comb[i] = 1
-                arr.append(comb)
+                arr.append(np.copy(comb))
             if(length >= 3):
                 comb=np.zeros(size,dtype=int)
-                comb[-1] = 1
-                comb[-2] = 1
+                comb[n-1] = 1
+                comb[n-2] = 1
                 for i in range(n-min(length,n),n-2):
                     comb[i] = 1
                 oneIndex = size-min(length,n)
@@ -237,6 +225,7 @@ class rootSystem:
                     oneIndex+=1
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeDDelta(n))
+        arr.sort(key = sum)
         return arr
     def getAWeights(n,affine=False):
         size = n
@@ -408,6 +397,8 @@ class rootSystem:
         if(type(combinations)is not np.array):   
             combinations = np.array(combinations,dtype=int)
         weight = sum(combinations)
+        if(weight == 4):
+            pass
         if(weight == 1):
             return
         imaginary = self.isImaginary(combinations)
@@ -417,10 +408,10 @@ class rootSystem:
         for i in self.baseWeights:
             if i.tobytes() in checked:
                 continue
-            i = np.copy(i)
             j = combinations-i
             if(len(self.getWords(j)) == 0):
                 continue
+            i = np.copy(i)
             eitherRootImaginary = self.isImaginary(i) or self.isImaginary(j)
             if(imaginary and eitherRootImaginary):
                 continue
