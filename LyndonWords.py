@@ -212,8 +212,8 @@ class rootSystem:
                 comb[n-2] = 1
                 for i in range(n-min(length,n),n-2):
                     comb[i] = 1
-                oneIndex = size-min(length,n)
-                twoIndex = size-2
+                oneIndex = n-min(length,n)
+                twoIndex = n-2
                 while(sum(comb) < length):
                     twoIndex -= 1
                     comb[twoIndex] = 2
@@ -397,8 +397,6 @@ class rootSystem:
         if(type(combinations)is not np.array):   
             combinations = np.array(combinations,dtype=int)
         weight = sum(combinations)
-        if(weight == 4):
-            pass
         if(weight == 1):
             return
         imaginary = self.isImaginary(combinations)
