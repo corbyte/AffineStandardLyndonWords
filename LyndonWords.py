@@ -349,14 +349,10 @@ class rootSystem:
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeCDelta(n))
         arr.sort(key = sum)
         return arr
-    def costandardFactorization(self,wordToFactor):
-        if(type(wordToFactor) is not word):
-            res = self.getWords(np.array(wordToFactor,dtype=int))
-            if(len(res) == 0):
-                raise ValueError('Combination not found')
-            if(len(res) != 1):
-                raise ValueError('Must give real word')
-            wordToFactor = res[0]
+    def costandardFactorization(self,wordToFactor:word):
+        if(wordToFactor.degree == 1):
+            return (wordToFactor,None)
+        #TODO: update this to improve efficiency
         wordToFactorWeight = wordToFactor.weights
         weight = np.copy(wordToFactor.weights)
         for i in range(len(wordToFactor)):
@@ -522,6 +518,7 @@ class rootSystem:
         delta = np.repeat(2,n+1)
         delta[-1] =1
         delta[-2] = 1
+        delta[-3] = 1
         delta[0] = 1
         return delta
     def TypeGDelta():
