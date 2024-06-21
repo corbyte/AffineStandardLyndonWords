@@ -97,15 +97,14 @@ class rootSystem:
         else:
             re = A
             im = B
-        weights = re.weights - (self.delta * re.degree // self.deltaDegree)
-        return np.any(np.logical_and(weights!= 0, (im.hs @self.cartan_matrix) != 0))
+        weights = re.weights - (self.delta * re.weights[-1])
+        return sum(weights[:-1]* (im.hs @self.cartan_matrix)) != 0
     def hBracket(self,word):
-        (a,b) = self.costandardFactorization(word)
+        a = self.costandardFactorization(word)[0]
         newA = (a.weights - (self.delta *a.weights[-1]))
-        newB = (b.weights - (self.delta * b.weights[-1]))
         if(np.any(newA < 0)):
-            return newB
-        return newA
+            return -newA[:-1]
+        return newA[:-1]
     def __init__(self, ordering,type,k=0):
         type = type.upper()
         self.k = k
@@ -141,36 +140,35 @@ class rootSystem:
             self.baseWeights = rootSystem.getGWeights(self.affine)
         #TODO: Maybe it'd be faster to just generate the base weights and then sort them by length
         if(self.affine):
-            self.cartan_matrix = np.zeros((self.n+1,self.n+1), dtype=int)
-            self.cartan_matrix[:-1,:-1] = np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int)
+            self.cartan_matrix =np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int)
             if(type == 'A'):
                 self.delta = rootSystem.TypeADelta(self.n)
                 extension = np.zeros(self.n+1,dtype=int)
-                extension[0] = -1
+                '''extension[0] = -1
                 extension[-2] = -1
                 extension[-1] = 2
                 self.cartan_matrix[:,-1] = extension
-                self.cartan_matrix[-1] = extension
+                self.cartan_matrix[-1] = extension'''
             elif (type == 'B'):
                 self.delta = rootSystem.TypeBDelta(self.n) 
-                self.cartan_matrix[-1,-1] =2
-                self.cartan_matrix[-1,1] = -1
-                self.cartan_matrix[1,-1] = -1
+                #self.cartan_matrix[-1,-1] =2
+                #self.cartan_matrix[-1,1] = -1
+                #self.cartan_matrix[1,-1] = -1
             elif(type == 'C'):
                 self.delta = rootSystem.TypeCDelta(self.n)
-                self.cartan_matrix[-1,-1]= 2
-                self.cartan_matrix[-1,0] = -1
-                self.cartan_matrix[0,-1] = -2
+                #self.cartan_matrix[-1,-1]= 2
+                #self.cartan_matrix[-1,0] = -1
+                #self.cartan_matrix[0,-1] = -2
             elif(type == 'D'):
                 self.delta = rootSystem.TypeDDelta(self.n)
-                self.cartan_matrix[-1,-1] = 2
-                self.cartan_matrix[-1,1] = -1
-                self.cartan_matrix[1,-1] = -1
+                #self.cartan_matrix[-1,-1] = 2
+                #self.cartan_matrix[-1,1] = -1
+                #self.cartan_matrix[1,-1] = -1
             elif(type == 'G'):
                 self.delta = rootSystem.TypeGDelta()
-                self.cartan_matrix[-1,-1] = 2
-                self.cartan_matrix[-1,0] = -1
-                self.cartan_matrix[0,-1] = -1
+                #self.cartan_matrix[-1,-1] = 2
+                #self.cartan_matrix[-1,0] = -1
+                #self.cartan_matrix[0,-1] = -1
             self.deltaDegree = sum(self.delta)
             #Generates the words
             self.__genAffineRootSystem()
@@ -443,7 +441,7 @@ class rootSystem:
         else:
             potentialOptions = list(set(potentialOptions))
             potentialOptions.sort(reverse=True)
-            matrix = np.zeros((self.n+1,self.n+1), dtype = int)
+            matrix = np.zeros((self.n,self.n), dtype = int)
             potentialOptions[0].hs = self.hBracket(potentialOptions[0])
             liPotentialOptions = [potentialOptions[0]]
             matrix[0] = potentialOptions[0].hs
