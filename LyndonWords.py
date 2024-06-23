@@ -88,27 +88,43 @@ class letterOrdering:
         return self.order[index]
     def __str__(self):
         return '<'.join([str(i) for i in self.order])
+    def __iter__(self):
+        self.iterIndex = 0
+        return self
+    def __next__(self) -> word:
+        if(self.iterIndex == len(self.order)):
+            raise StopIteration
+        temp = self.order[self.iterIndex]
+        self.iterIndex+=1
+        return temp
 
 class rootSystem:
-    def eBracket(self, A,B):
+    def eBracket(self, bracketWord):            
+        (A,B) = self.costandardFactorization(bracketWord)
+        if(A is None):
+            return False
         if(self.isImaginary(A.weights)):
             re = B
             im = A
-        else:
+        elif(self.isImaginary(B.weights)):
             re = A
             im = B
+        else:
+            return True
         weights = re.weights - (self.delta * re.weights[-1])
         return sum(weights[:-1]* (im.hs @self.cartan_matrix)) != 0
     def hBracket(self,word):
         a = self.costandardFactorization(word)[0]
+        if(a is None):
+            return np.zeros(self.n,dtype=int)
         newA = (a.weights - (self.delta *a.weights[-1]))
         if(np.any(newA < 0)):
             return -newA[:-1]
         return newA[:-1]
-    def __init__(self, ordering,type,k=0):
+    def __init__(self, ordering,type:str,k:int=0):
         type = type.upper()
         self.k = k
-        self.affine = k != 0
+        self.affine:bool = k != 0
         if( len(type) != 1 or type < 'A' or type > 'G' ):
             raise ValueError('Type is invalid')
         if(self.affine):
@@ -116,8 +132,8 @@ class rootSystem:
         else:
             self.n = len(ordering)
         self.ordering:letterOrdering = letterOrdering(ordering)
-        self.weightToWordDictionary = {}
-        self.minWord = None
+        self.weightToWordDictionary:dict = {}
+        self.minWord:word = None
         def weightsGeneration(letter):
             arr = np.zeros(len(self.ordering),dtype=int)
             arr[letter.rootIndex-1] = 1
@@ -350,23 +366,46 @@ class rootSystem:
     def costandardFactorization(self,wordToFactor:word):
         if(wordToFactor.degree == 1):
             return (wordToFactor,None)
-        #TODO: update this to improve efficiency
-        wordToFactorWeight = wordToFactor.weights
         weight = np.copy(wordToFactor.weights)
-        for i in range(len(wordToFactor)):
-            weight[wordToFactor[i].rootIndex -1] -= 1
-            rightWords = self.getWords(weight)
-            if(len(rightWords) == 0):
+        weight[wordToFactor[0].rootIndex -1] -= 1
+        splitLetter = None
+        for i in self.ordering:
+            if(weight[i.rootIndex-1] != 0):
+                splitLetter = i
+                break
+        weight[wordToFactor[0].rootIndex -1] += 1
+        for i in range(1,len(wordToFactor)):
+            weight[wordToFactor[i-1].rootIndex -1] -= 1
+            if(wordToFactor[i] != splitLetter):
                 continue
-            for rightWord in rightWords:
-                flag = False
-                for j in range(len(rightWord)):
-                    if(rightWord[j] != wordToFactor[i+j+1]):
-                        flag = True
+            rightWords = self.getWords(weight)
+            rightWord = None
+            for rWord in rightWords:
+                flag = True
+                for j in range(sum(weight)):
+                    if(rWord[j] != wordToFactor[i+j]):
+                        flag=False
                         break
                 if(flag):
-                    continue
-                return (self.getWords(wordToFactorWeight-weight)[0],rightWord)
+                    rightWord = rWord
+                    break
+            if(rightWord is None):
+                continue
+            leftWord = None
+            leftWords = self.getWords(wordToFactor.weights-weight)    
+            for lWord in leftWords:
+                flag = True
+                for j in range(len(lWord)):
+                    if(lWord[j] != wordToFactor[j]):
+                        flag=False
+                        break
+                if(flag):
+                    leftWord = lWord
+                    break
+            if(leftWord is None):
+                continue
+            return (leftWord,rightWord)
+        return (None,None)
     def getWords(self, combination):
         if(type(combination) is not np.array):
             combination = np.array(combination,dtype=int)
@@ -420,10 +459,9 @@ class rootSystem:
                             (a,b) = (word1,word2)
                         else:
                             (a,b) = (word2,word1)
-                        if(self.affine and eitherRootImaginary):
-                            bracket = self.eBracket(a,b)
+                        if(self.affine):
                             #Checks to see if bracket is non-zero
-                            if not bracket.any():
+                            if not self.eBracket(a+b):
                                 continue
                         if(imaginary):
                             potentialOptions.append(a+b)
