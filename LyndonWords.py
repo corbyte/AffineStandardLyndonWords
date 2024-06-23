@@ -19,10 +19,10 @@ class letter:
         if not isinstance(other,self.__class__):
             return NotImplemented
         return self.index == other.index
+    def __gt__(self,other):
+        return self.index > other.index
     def __ne__(self,other):
         return not (self.index == other.index)
-    def __geq__(self, other):
-        return not (self < other)
     def __hash__(self):
         return hash(self.rootIndex)
     def __le__(self, other):
@@ -459,9 +459,12 @@ class rootSystem:
                             (a,b) = (word1,word2)
                         else:
                             (a,b) = (word2,word1)
-                        if(self.affine):
+                        if(self.affine and not imaginary):
                             #Checks to see if bracket is non-zero
-                            if not self.eBracket(a+b):
+                            newWord = a+b
+                            if(maxWord == newWord):
+                                continue
+                            if not self.eBracket(newWord):
                                 continue
                         if(imaginary):
                             potentialOptions.append(a+b)
@@ -500,11 +503,11 @@ class rootSystem:
         for i in self.getBaseWeights():
             returnarr.append(np.array(self.getAffineWords(i)))
         return np.array(returnarr)
-    def getMonotonicity(self, comb):
-        weights = [i.weights for i in self.getAffineWords(comb)]
-        for j in range(1,len(weights)):
+    def getMonotonicity(self, comb,deltaIndex = 0):
+        words = self.getAffineWords(comb)
+        for j in range(1,len(words)):
             monotonicity = 0
-            if(self.getWords(weights[j])[0] < self.getWords(weights[j-1])[0]):
+            if(words[j-1] < words[j]):
                 if(monotonicity == -1):
                     monotonicity = 0
                     break
