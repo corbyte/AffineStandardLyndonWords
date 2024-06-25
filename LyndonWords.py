@@ -31,7 +31,7 @@ class letter:
         return self.index >= other.index
 class word:
     #Maybe change to sparse matrix
-    def __init__(self, wordArray,l,weights,imaginary=False,es=None,hs=None):
+    def __init__(self, wordArray,weights,imaginary=False):
         self.string = np.array(wordArray,dtype=letter)
         self.imaginary=imaginary
         self.hs = None
@@ -56,12 +56,12 @@ class word:
     def __lt__(self,other):
         if not isinstance(other, self.__class__):
             return NotImplemented
-        for i in range(min(len(self.string),len(other.string))):
+        for i in range(min(self.degree,other.degree)):
             if(self.string[i] < other.string[i]):
                 return True
             if(self.string[i] > other.string[i]):
                 return False
-        if(len(self.string) < len(other.string)):
+        if(self.degree < other.degree):
             return True
         return False
     def __le__(self,other):
@@ -75,7 +75,7 @@ class word:
     def __ne__(self,other):
         return not (self == other)
     def __add__(self,other):
-        return word(np.concatenate((self.string,other.string),dtype=word),len(self.weights),self.weights + other.weights) 
+        return word(np.concatenate((self.string,other.string),dtype=word),self.weights + other.weights) 
 class letterOrdering:
     def __init__(self, letterOrdering):
         letterOrdering = [letter(str(i),i) for i in letterOrdering]
@@ -138,7 +138,7 @@ class rootSystem:
             arr = np.zeros(len(self.ordering),dtype=int)
             arr[letter.rootIndex-1] = 1
             return arr
-        for i in [word([i],len(self.ordering),weightsGeneration(i)) for i in self.ordering.order]:
+        for i in [word([i],weightsGeneration(i)) for i in self.ordering.order]:
             if(self.minWord is None):
                 self.minWord = i
             elif(self.minWord > i):
@@ -194,9 +194,11 @@ class rootSystem:
         for i in self.baseWeights:
             self.__genWord(i)
     def __genAffineRootSystem(self):
-        for k in range(self.k+1):
-            for i in self.baseWeights:
-                self.__genWord(i + self.delta * k)
+        currentWeights = np.array(self.baseWeights,dtype=int)
+        for _ in range(self.k+1):
+            for i in currentWeights:
+                self.__genWord(i)
+                i += self.delta
     def getDWeights(n,affine=False):
         size=n
         if(affine):
@@ -255,7 +257,7 @@ class rootSystem:
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeADelta(n))
         arr.sort(key = sum)
-        return arr 
+        return np.array(arr) 
     def getBWeights(n,affine=False):
         if(affine):
             size = n+1
@@ -300,7 +302,7 @@ class rootSystem:
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeBDelta(n))
         arr.sort(key = sum)
-        return arr
+        return np.array(arr)
     def __genAffineBaseWeights(arr,delta:np.array):
         for i in arr:
             if(i[-1] == 1):
@@ -316,7 +318,7 @@ class rootSystem:
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeGDelta())
         arr.sort(key = sum)
-        return arr
+        return np.array(arr)
     def getCWeights(n,affine:bool=False):
         size = n
         if(affine):
@@ -362,7 +364,7 @@ class rootSystem:
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeCDelta(n))
         arr.sort(key = sum)
-        return arr
+        return np.array(arr)
     def costandardFactorization(self,wordToFactor:word):
         if(wordToFactor.degree == 1):
             return (wordToFactor,None)
