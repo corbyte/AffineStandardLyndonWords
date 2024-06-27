@@ -561,36 +561,3 @@ class rootSystem:
         return delta
     def TypeGDelta():
         return np.array([2,3,1],dtype=int)
-def main():
-    parser = argparse.ArgumentParser()
-    parser.add_argument("type",choices=["C","c","A","a","b","B",'d','D'])
-    parser.add_argument("size",type=int)
-    parser.add_argument("-o","--order", nargs='+', type =int)
-    parser.add_argument('-a','--affine_count',type=int, default=0)
-    args = parser.parse_args()
-    #args = parser.parse_args(['C','6', '-a' ,'6'])
-    type = args.type
-    affineCount = args.affine_count
-    size = args.size
-    orderInput = args.order
-    # parameter input: type affinecount size stanard order y/n order if n
-    order = []
-    if(orderInput is None):
-        if(affineCount == 0):
-            order = [int(i) for i in range(1,size+1)]
-        else:
-            type = type.upper()
-            if(type == 'A'):
-                order = [int(i) for i in range(1,size+1)]
-                order.append(0)
-            elif(type =='C'):
-                order = [i for i in range(-1,size)]
-                order[0] = size
-            else:
-                order = [int(i) for i in range(1,size+1)]
-                order.append(0)
-    else:
-        order = [int(i) for i in orderInput]
-    rootsystem = rootSystem(order,type,affineCount) 
-if __name__ == '__main__':    
-    main()
