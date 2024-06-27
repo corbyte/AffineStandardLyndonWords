@@ -162,32 +162,16 @@ class rootSystem:
             self.cartan_matrix =np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int)
             if(type == 'A'):
                 self.delta = rootSystem.TypeADelta(self.n)
-                extension = np.zeros(self.n+1,dtype=int)
-                '''extension[0] = -1
-                extension[-2] = -1
-                extension[-1] = 2
-                self.cartan_matrix[:,-1] = extension
-                self.cartan_matrix[-1] = extension'''
             elif (type == 'B'):
                 self.delta = rootSystem.TypeBDelta(self.n) 
-                #self.cartan_matrix[-1,-1] =2
-                #self.cartan_matrix[-1,1] = -1
-                #self.cartan_matrix[1,-1] = -1
             elif(type == 'C'):
                 self.delta = rootSystem.TypeCDelta(self.n)
-                #self.cartan_matrix[-1,-1]= 2
-                #self.cartan_matrix[-1,0] = -1
-                #self.cartan_matrix[0,-1] = -2
             elif(type == 'D'):
                 self.delta = rootSystem.TypeDDelta(self.n)
-                #self.cartan_matrix[-1,-1] = 2
-                #self.cartan_matrix[-1,1] = -1
-                #self.cartan_matrix[1,-1] = -1
+            elif(type == 'F'):
+                self.delta = rootSystem.TypeFDelta()
             elif(type == 'G'):
                 self.delta = rootSystem.TypeGDelta()
-                #self.cartan_matrix[-1,-1] = 2
-                #self.cartan_matrix[-1,0] = -1
-                #self.cartan_matrix[0,-1] = -1
             self.deltaDegree = sum(self.delta)
             #Generates the words
             self.__genAffineRootSystem()
@@ -322,6 +306,18 @@ class rootSystem:
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeGDelta())
         arr.sort(key = sum)
         return np.array(arr)
+    def getFWeights(affine:bool=False):
+        arr = []
+        for i in [[0,1,0,0],[0,0,1,0],[0,0,0,1],[1,0,0,0],[0,0,1,1],
+                  [0,1,1,1],[0,1,2,1],[1,1,1,1],[1,1,2,1],[1,2,2,1],[1,2,3,1],[0,1,2,0],
+                  [1,1,1,0],[1,2,2,0],[1,2,2,2],[1,1,1,0],[0,1,1,0],[1,2,3,2],[1,3,3,2],
+                  [2,3,3,2],[1,2,1,2],[1,3,1,2],[2,3,1,2],[1,1,0,0]]:
+            if(affine):
+                i.append(0)
+            arr.append(np.array(i),dtype=int)
+        if(affine):
+            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeFDelta())
+        arr.sort(key = sum)
     def getCWeights(n,affine:bool=False):
         size = n
         if(affine):
@@ -559,5 +555,7 @@ class rootSystem:
         delta[-3] = 1
         delta[0] = 1
         return delta
+    def TypeFDelta():
+        return np.array([2,3,3,2,1],dtype=int)
     def TypeGDelta():
         return np.array([2,3,1],dtype=int)
