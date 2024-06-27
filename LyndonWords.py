@@ -155,6 +155,8 @@ class rootSystem:
             self.baseWeights = rootSystem.getCWeights(self.n,self.affine)
         elif(type =='D'):
             self.baseWeights = rootSystem.getDWeights(self.n,self.affine)
+        elif(type == 'F'):
+            self.baseWeights = rootSystem.getFWeights(self.affine)
         elif(type == 'G'):
             self.baseWeights = rootSystem.getGWeights(self.affine)
         #TODO: Maybe it'd be faster to just generate the base weights and then sort them by length
@@ -296,7 +298,7 @@ class rootSystem:
                 break
             arr.append(delta - i)
         arr.append(delta)
-    def getGWeights(affine:bool=False):
+    def getGWeights(affine:bool=False)-> np.array:
         arr = []
         for i in [[1,0],[0,1],[1,1],[1,2],[1,3],[2,3]]:
             if(affine):
@@ -308,16 +310,17 @@ class rootSystem:
         return np.array(arr)
     def getFWeights(affine:bool=False):
         arr = []
-        for i in [[0,1,0,0],[0,0,1,0],[0,0,0,1],[1,0,0,0],[0,0,1,1],
-                  [0,1,1,1],[0,1,2,1],[1,1,1,1],[1,1,2,1],[1,2,2,1],[1,2,3,1],[0,1,2,0],
-                  [1,1,1,0],[1,2,2,0],[1,2,2,2],[1,1,1,0],[0,1,1,0],[1,2,3,2],[1,3,3,2],
-                  [2,3,3,2],[1,2,1,2],[1,3,1,2],[2,3,1,2],[1,1,0,0]]:
+        for i in [[0,1,0,0],[0,0,1,0],[0,0,0,1],[1,0,0,0],[0,0,1,1],[0,1,1,1],
+                  [0,1,2,2],[0,1,2,1],[1,1,1,1],[1,1,2,1],[1,2,2,1],[1,2,3,1],
+                  [0,1,2,0],[1,1,2,0],[1,2,2,0],[1,2,2,2],[1,1,1,0],[0,1,1,0],
+                  [1,3,4,2],[2,3,4,2],[1,1,2,2],[1,2,3,2],[1,1,0,0],[1,2,4,2]]:
             if(affine):
                 i.append(0)
-            arr.append(np.array(i),dtype=int)
+            arr.append(np.array(i,dtype=int))
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeFDelta())
         arr.sort(key = sum)
+        return np.array(arr)
     def getCWeights(n,affine:bool=False):
         size = n
         if(affine):
@@ -556,6 +559,6 @@ class rootSystem:
         delta[0] = 1
         return delta
     def TypeFDelta():
-        return np.array([2,3,3,2,1],dtype=int)
+        return np.array([2,3,4,2,1],dtype=int)
     def TypeGDelta():
         return np.array([2,3,1],dtype=int)
