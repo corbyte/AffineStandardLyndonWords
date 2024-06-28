@@ -65,10 +65,13 @@ class word:
         return not (self == other)
     def __add__(self,other):
         return word(np.concatenate((self.string,other.string),dtype=word),self.weights + other.weights) 
-    def letterListCmp(first,second):
+    def letterListCmp(first:np.array,second:np.array):
         lFirst = len(first)
         lSecond = len(second)
-        minLen = min(lFirst,lSecond)
+        if(lFirst < lSecond):
+            minLen = lFirst
+        else:
+            minLen = lSecond
         for i in range(minLen):
             if(first[i].index > second[i].index):
                 return 1
@@ -120,7 +123,7 @@ class rootSystem:
         a = self.costandardFactorization(word)[0]
         if(a is None):
             return np.zeros(self.n,dtype=int)
-        word.cofactorizationSplit = len(a)
+        word.cofactorizationSplit = a.degree
         newA = (a.weights - (self.delta *a.weights[-1]))
         if(np.any(newA < 0)):
             return -newA[:-1]
@@ -161,6 +164,7 @@ class rootSystem:
             self.baseWeights = rootSystem.getFWeights(self.affine)
         elif(type == 'G'):
             self.baseWeights = rootSystem.getGWeights(self.affine)
+        self.numberOfBaseWeights = len(self.baseWeights)
         #TODO: Maybe it'd be faster to just generate the base weights and then sort them by length
         if(self.affine):
             self.cartan_matrix =np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int)
@@ -373,23 +377,23 @@ class rootSystem:
         if(wordToFactor.degree == 1):
             return (wordToFactor,None)
         weight = np.copy(wordToFactor.weights)
-        weight[wordToFactor[0].rootIndex -1] -= 1
+        weight[wordToFactor.string[0].rootIndex -1] -= 1
         splitLetter = None
         for i in self.ordering:
             if(weight[i.rootIndex-1] != 0):
                 splitLetter = i
                 break
-        weight[wordToFactor[0].rootIndex -1] += 1
-        for i in range(1,len(wordToFactor)):
-            weight[wordToFactor[i-1].rootIndex -1] -= 1
-            if(wordToFactor[i] != splitLetter):
+        weight[wordToFactor.string[0].rootIndex -1] += 1
+        for i in range(1,wordToFactor.degree):
+            weight[wordToFactor.string[i-1].rootIndex -1] -= 1
+            if(wordToFactor.string[i].index != splitLetter.index):
                 continue
             rightWords = self.getWords(weight)
             rightWord = None
             for rWord in rightWords:
                 flag = True
                 for j in range(sum(weight)):
-                    if(rWord[j] != wordToFactor[i+j]):
+                    if(rWord.string[j].index != wordToFactor.string[i+j].index):
                         flag=False
                         break
                 if(flag):
@@ -401,8 +405,8 @@ class rootSystem:
             leftWords = self.getWords(wordToFactor.weights-weight)    
             for lWord in leftWords:
                 flag = True
-                for j in range(len(lWord)):
-                    if(lWord[j] != wordToFactor[j]):
+                for j in range(lWord.degree):
+                    if(lWord.string[j].index != wordToFactor.string[j].index):
                         flag=False
                         break
                 if(flag):
@@ -413,10 +417,11 @@ class rootSystem:
             return (leftWord,rightWord)
         return (None,None)
     def getWords(self, combination:np.array):
-        if(not combination.tobytes() in self.weightToWordDictionary):
+        bytes = combination.tobytes()
+        if(not bytes in self.weightToWordDictionary):
             return []
         else:
-            return self.weightToWordDictionary[combination.tobytes()]
+            return self.weightToWordDictionary[bytes]
     def getAffineWords(self,weight):
         if not self.affine:
             raise ValueError('Cannot call getAffineWords on a simple Lie algebra')
@@ -437,16 +442,16 @@ class rootSystem:
         imaginary = self.isImaginary(weight)
         potentialOptions = []
         maxWord  = self.minWord
-        validBase = np.repeat(True,len(self.baseWeights))
+        validBase = np.repeat(True,self.numberOfBaseWeights)
         kDelta = np.zeros(len(self.ordering),dtype=int)
         lengthChecked = weight
         i = self.baseWeights[0]
         iSum=0
         while(iSum <= lengthChecked):
-            for baseWordIndex in range(len(self.baseWeights)):
+            for baseWordIndex in range(self.numberOfBaseWeights):
                 if(not validBase[baseWordIndex]):
                     continue
-                i = np.copy(self.baseWeights[baseWordIndex]) + kDelta
+                i = self.baseWeights[baseWordIndex] + kDelta
                 iSum = sum(i)
                 if(iSum > lengthChecked):
                     break
@@ -456,7 +461,7 @@ class rootSystem:
                     validBase[baseWordIndex] = False
                     continue
                 lengthChecked = weight - iSum
-                eitherRootImaginary = (self.isImaginary(iSum) or self.isImaginary(lengthChecked))
+                eitherRootImaginary = (self.isImaginary(iSum) or self.isImaginary(weight-iSum))
                 if(imaginary and eitherRootImaginary):
                     continue
                 words1 = self.getWords(i)
