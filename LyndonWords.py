@@ -48,7 +48,7 @@ class word:
         if(len(self.string) != len(other.string)):
             return False
         for i in range(len(self.string)):
-            if(self.string[i] != other.string[i]):
+            if(not self.string[i] == other.string[i]):
                 return False
         return True
     def __lt__(self,other):
@@ -66,15 +66,17 @@ class word:
     def __add__(self,other):
         return word(np.concatenate((self.string,other.string),dtype=word),self.weights + other.weights) 
     def letterListCmp(first,second):
-        minLen = min(len(first),len(second))
+        lFirst = len(first)
+        lSecond = len(second)
+        minLen = min(lFirst,lSecond)
         for i in range(minLen):
             if(first[i].index > second[i].index):
                 return 1
             if(first[i].index < second[i].index):
                 return -1
-        if(len(first) < len(second)):
+        if(len(first) < lSecond):
             return -1
-        if(len(first) > len(second)):
+        if(len(first) > lFirst):
             return 1
         return 0
 class letterOrdering:
@@ -113,7 +115,7 @@ class rootSystem:
         else:
             return True
         weights = re.weights - (self.delta * re.weights[-1])
-        return sum(weights[:-1]* (im.hs @self.cartan_matrix)) != 0
+        return np.any(weights[:-1]* (im.hs @self.cartan_matrix))
     def hBracket(self,word:word):
         a = self.costandardFactorization(word)[0]
         if(a is None):
@@ -428,30 +430,37 @@ class rootSystem:
         return matches
     def isImaginary(self,degree):
         return (self.affine and degree % self.deltaDegree == 0)
-    def __genWord(self, combinations):
-        if(type(combinations)is not np.array):   
-            combinations = np.array(combinations,dtype=int)
+    def __genWord(self, combinations:np.array):
         weight = sum(combinations)
         if(weight == 1):
             return
-        imaginary = self.isImaginary(sum(combinations))
+        imaginary = self.isImaginary(weight)
         potentialOptions = []
         maxWord  = self.minWord
-        checked = set()
-        for i in self.baseWeights:
-            if i.tobytes() in checked:
-                continue
-            j = combinations-i
-            if(len(self.getWords(j)) == 0):
-                continue
-            i = np.copy(i)
-            eitherRootImaginary = self.isImaginary(sum(j))
-            if(imaginary and eitherRootImaginary):
-                continue
-            while(sum(j) > 0):
+        validBase = np.repeat(True,len(self.baseWeights))
+        kDelta = np.zeros(len(self.ordering),dtype=int)
+        lengthChecked = weight
+        i = self.baseWeights[0]
+        iSum=0
+        while(iSum <= lengthChecked):
+            for baseWordIndex in range(len(self.baseWeights)):
+                if(not validBase[baseWordIndex]):
+                    continue
+                i = np.copy(self.baseWeights[baseWordIndex]) + kDelta
+                iSum = sum(i)
+                if(iSum > lengthChecked):
+                    break
+                j = combinations-i
+                words2 = self.getWords(j)
+                if(len(words2) == 0):
+                    validBase[baseWordIndex] = False
+                    continue
+                lengthChecked = weight - iSum
+                eitherRootImaginary = (self.isImaginary(iSum) or self.isImaginary(lengthChecked))
+                if(imaginary and eitherRootImaginary):
+                    continue
                 words1 = self.getWords(i)
                 for word1 in words1:
-                    words2 = self.getWords(j)
                     for word2 in words2:
                         if(word1< word2):
                             (a,b) = (word1,word2)
@@ -462,7 +471,7 @@ class rootSystem:
                         if(self.affine and not imaginary):
                             #Checks to see if bracket is non-zero
                             newWord = a+b
-                            if not self.eBracket(newWord):
+                            if eitherRootImaginary and not self.eBracket(newWord):
                                 continue
                         if(imaginary):
                             if(a.degree > 1 and word.letterListCmp(a[a.cofactorizationSplit:],b.string) < 0):
@@ -470,13 +479,8 @@ class rootSystem:
                             potentialOptions.append(a+b)
                             continue
                         maxWord = a+b
-                if(not self.affine):
-                    break
-                i += self.delta
-                j -= self.delta
             if(self.affine):
-                j+= self.delta
-                checked.add(j.tobytes())
+                kDelta+= self.delta
         if not imaginary:
             maxWord.cofactorizationSplit = len(self.costandardFactorization(maxWord)[0])
             self.weightToWordDictionary[combinations.tobytes()] = [maxWord]
