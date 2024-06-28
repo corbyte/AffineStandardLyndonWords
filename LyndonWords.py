@@ -77,9 +77,9 @@ class word:
                 return 1
             if(first[i].index < second[i].index):
                 return -1
-        if(len(first) < lSecond):
+        if(lFirst < lSecond):
             return -1
-        if(len(first) > lFirst):
+        if(lFirst > lFirst):
             return 1
         return 0
 class letterOrdering:
