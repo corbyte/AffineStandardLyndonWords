@@ -79,7 +79,7 @@ class word:
                 return -1
         if(lFirst < lSecond):
             return -1
-        if(lFirst > lFirst):
+        if(lFirst > lSecond):
             return 1
         return 0
 class letterOrdering:
@@ -436,6 +436,8 @@ class rootSystem:
     def isImaginary(self,degree):
         return (self.affine and degree % self.deltaDegree == 0)
     def __genWord(self, combinations:np.array):
+        if(np.all(combinations == np.array([2,2,2,2,1]))):
+            pass
         weight = sum(combinations)
         if(weight == 1):
             return
@@ -471,19 +473,29 @@ class rootSystem:
                             (a,b) = (word1,word2)
                         else:
                             (a,b) = (word2,word1)
-                        if(not imaginary and a < maxWord):
-                            continue
+                        #FIXME:
+                        if(not self.affine):
+                            if(word.letterListCmp(a.string, maxWord.string) < 0):
+                                continue
+                            maxWord = a+b
                         if(self.affine and not imaginary):
+                            if(np.all(combinations == np.array([1,1,1,1,1]))):
+                                pass
                             #Checks to see if bracket is non-zero
+                            if(a.degree > 1 and word.letterListCmp(a.string[a.cofactorizationSplit:],b.string) < 0):
+                                continue
                             newWord = a+b
+                            if word.letterListCmp(newWord.string,maxWord.string) <= 0:
+                                continue
                             if eitherRootImaginary and not self.eBracket(newWord):
                                 continue
+                            newWord.cofactorizationSplit = a.degree
+                            maxWord = newWord
                         if(imaginary):
-                            if(a.degree > 1 and word.letterListCmp(a[a.cofactorizationSplit:],b.string) < 0):
+                            if(a.degree > 1 and word.letterListCmp(a.string[a.cofactorizationSplit:],b.string) < 0):
                                 continue
                             potentialOptions.append(a+b)
                             continue
-                        maxWord = a+b
             if(self.affine):
                 kDelta+= self.delta
         if not imaginary:
