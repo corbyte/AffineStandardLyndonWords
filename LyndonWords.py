@@ -35,11 +35,11 @@ class word:
         self.string = np.array(wordArray,dtype=letter)
         self.hs = None
         self.weights = weights
-        self.degree = sum(self.weights)
+        self.height = sum(self.weights)
         self.weights.flags.writeable = False
         self.cofactorizationSplit = None
     def __len__(self):
-        return self.degree
+        return self.height
     def __getitem__(self,i):
         return self.string[i]
     def __str__(self):
@@ -109,10 +109,10 @@ class rootSystem:
         (A,B) = self.costandardFactorization(bracketWord)
         if(A is None):
             return False
-        if(self.isImaginary(A.degree)):
+        if(self.isImaginary(A.height)):
             re = B
             im = A
-        elif(self.isImaginary(B.degree)):
+        elif(self.isImaginary(B.height)):
             re = A
             im = B
         else:
@@ -123,7 +123,7 @@ class rootSystem:
         a = self.costandardFactorization(word)[0]
         if(a is None):
             return np.zeros(self.n,dtype=int)
-        word.cofactorizationSplit = a.degree
+        word.cofactorizationSplit = a.height
         newA = (a.weights - (self.delta *a.weights[-1]))
         if(np.any(newA < 0)):
             return -newA[:-1]
@@ -180,7 +180,7 @@ class rootSystem:
                 self.delta = rootSystem.TypeFDelta()
             elif(type == 'G'):
                 self.delta = rootSystem.TypeGDelta()
-            self.deltaDegree = sum(self.delta)
+            self.deltaHeight = sum(self.delta)
             #Generates the words
             self.__genAffineRootSystem()
         else:
@@ -374,7 +374,7 @@ class rootSystem:
         arr.sort(key = sum)
         return np.array(arr)
     def costandardFactorization(self,wordToFactor:word):
-        if(wordToFactor.degree == 1):
+        if(wordToFactor.height == 1):
             return (wordToFactor,None)
         weight = np.copy(wordToFactor.weights)
         weight[wordToFactor.string[0].rootIndex -1] -= 1
@@ -384,7 +384,7 @@ class rootSystem:
                 splitLetter = i
                 break
         weight[wordToFactor.string[0].rootIndex -1] += 1
-        for i in range(1,wordToFactor.degree):
+        for i in range(1,wordToFactor.height):
             weight[wordToFactor.string[i-1].rootIndex -1] -= 1
             if(wordToFactor.string[i].index != splitLetter.index):
                 continue
@@ -405,7 +405,7 @@ class rootSystem:
             leftWords = self.getWords(wordToFactor.weights-weight)    
             for lWord in leftWords:
                 flag = True
-                for j in range(lWord.degree):
+                for j in range(lWord.height):
                     if(lWord.string[j].index != wordToFactor.string[j].index):
                         flag=False
                         break
@@ -433,8 +433,8 @@ class rootSystem:
             k+=1
             newWord=self.getWords(weight + k*self.delta)
         return matches
-    def isImaginary(self,degree):
-        return (self.affine and degree % self.deltaDegree == 0)
+    def isImaginary(self,height):
+        return (self.affine and height % self.deltaHeight == 0)
     def __genWord(self, combinations:np.array):
         if(np.all(combinations == np.array([2,2,2,2,1]))):
             pass
@@ -482,17 +482,17 @@ class rootSystem:
                             if(np.all(combinations == np.array([1,1,1,1,1]))):
                                 pass
                             #Checks to see if bracket is non-zero
-                            if(a.degree > 1 and word.letterListCmp(a.string[a.cofactorizationSplit:],b.string) < 0):
+                            if(a.height > 1 and word.letterListCmp(a.string[a.cofactorizationSplit:],b.string) < 0):
                                 continue
                             newWord = a+b
                             if word.letterListCmp(newWord.string,maxWord.string) <= 0:
                                 continue
                             if eitherRootImaginary and not self.eBracket(newWord):
                                 continue
-                            newWord.cofactorizationSplit = a.degree
+                            newWord.cofactorizationSplit = a.height
                             maxWord = newWord
                         if(imaginary):
-                            if(a.degree > 1 and word.letterListCmp(a.string[a.cofactorizationSplit:],b.string) < 0):
+                            if(a.height > 1 and word.letterListCmp(a.string[a.cofactorizationSplit:],b.string) < 0):
                                 continue
                             potentialOptions.append(a+b)
                             continue
@@ -551,7 +551,7 @@ class rootSystem:
         return np.array(returnarr, dtype=object)
     def checkConvexity(self):
         exceptions = []
-        wordsByLength = sorted(list(self.weightToWordDictionary.values()),key=lambda x:x[0].degree)
+        wordsByLength = sorted(list(self.weightToWordDictionary.values()),key=lambda x:x[0].heights)
         for wordIndex in range(1,len(wordsByLength)):
             for sumWord in wordsByLength[wordIndex]:
                 for alphaWords in wordsByLength[:wordIndex]:
