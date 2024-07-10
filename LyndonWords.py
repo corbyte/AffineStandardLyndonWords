@@ -567,7 +567,7 @@ class rootSystem:
         return np.array(returnarr, dtype=object)
     def checkConvexity(self):
         exceptions = []
-        wordsByLength = sorted(list(self.weightToWordDictionary.values()),key=lambda x:x[0].heights)
+        wordsByLength = sorted(list(self.weightToWordDictionary.values()),key=lambda x:x[0].height)
         for wordIndex in range(1,len(wordsByLength)):
             for sumWord in wordsByLength[wordIndex]:
                 for alphaWords in wordsByLength[:wordIndex]:
