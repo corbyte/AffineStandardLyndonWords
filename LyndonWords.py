@@ -82,6 +82,22 @@ class word:
         if(lFirst > lSecond):
             return 1
         return 0
+    def printFormat(words, formatfunc):
+        for word in words:
+            print(formatfunc(word))
+    def costf(words,formatfunc,sep='-'):
+        return sep.join([formatfunc(i) for i in words])
+    def deltaFormat(word,delta):
+        if(word is None):
+            return "None"
+        deltaWeight = word.height//sum(delta)
+        base = word.weights - deltaWeight*delta
+        return f"{base} + {deltaWeight}d"
+    def SLDeltaFormat(word,deltaWords):
+        retstr = str(word)
+        for i in range(len(deltaWords)):
+            retstr = retstr.replace(str(deltaWords[i]),f"SL_{i+1}(d)")
+        return retstr
 class letterOrdering:
     def __init__(self, letterOrdering):
         letterOrdering = [letter(str(i),i) for i in letterOrdering]
@@ -106,7 +122,7 @@ class letterOrdering:
 
 class rootSystem:
     def eBracket(self, bracketWord:word):            
-        (A,B) = self.costandardFactorization(bracketWord)
+        (A,B) = self.costfac(bracketWord)
         if(A is None):
             return False
         if(self.isImaginary(A.height)):
@@ -120,7 +136,7 @@ class rootSystem:
         weights = re.weights - (self.delta * re.weights[-1])
         return np.any(weights[:-1]* (im.hs @self.cartan_matrix))
     def hBracket(self,word:word):
-        a = self.costandardFactorization(word)[0]
+        a = self.costfac(word)[0]
         if(a is None):
             return np.zeros(self.n,dtype=int)
         word.cofactorizationSplit = a.height
@@ -373,7 +389,7 @@ class rootSystem:
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeCDelta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def costandardFactorization(self,wordToFactor:word):
+    def costfac(self,wordToFactor:word):
         if(wordToFactor.height == 1):
             return (wordToFactor,None)
         weight = np.copy(wordToFactor.weights)
@@ -499,7 +515,7 @@ class rootSystem:
             if(self.affine):
                 kDelta+= self.delta
         if not imaginary:
-            maxWord.cofactorizationSplit = len(self.costandardFactorization(maxWord)[0])
+            maxWord.cofactorizationSplit = len(self.costfac(maxWord)[0])
             self.weightToWordDictionary[combinations.tobytes()] = [maxWord]
         else:
             potentialOptions.sort(reverse=True)
