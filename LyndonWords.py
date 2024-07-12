@@ -87,14 +87,15 @@ class word:
             print(formatfunc(word))
     def costf(words,formatfunc,sep='-'):
         return sep.join([formatfunc(i) for i in words])
-    def deltaFormat(word,delta):
+    def deltaFormat(word,rootSystem):
         if(word is None):
             return "None"
-        deltaWeight = word.height//sum(delta)
-        base = word.weights - deltaWeight*delta
+        deltaWeight = word.height//rootSystem.deltaHeight
+        base = word.weights - deltaWeight*rootSystem.delta
         return f"{base} + {deltaWeight}d"
-    def SLDeltaFormat(word,deltaWords):
+    def SLDeltaFormat(word,rootSystem):
         retstr = str(word)
+        deltaWords = rootSystem.getWords(rootSystem.delta)
         for i in range(len(deltaWords)):
             retstr = retstr.replace(str(deltaWords[i]),f"SL_{i+1}(d)")
         return retstr
@@ -452,8 +453,6 @@ class rootSystem:
     def isImaginary(self,height):
         return (self.affine and height % self.deltaHeight == 0)
     def __genWord(self, combinations:np.array):
-        if(np.all(combinations == np.array([2,2,2,2,1]))):
-            pass
         weight = sum(combinations)
         if(weight == 1):
             return
@@ -495,11 +494,7 @@ class rootSystem:
                                 continue
                             maxWord = a+b
                         if(self.affine and not imaginary):
-                            if(np.all(combinations == np.array([1,1,1,1,1]))):
-                                pass
                             #Checks to see if bracket is non-zero
-                            if(a.height > 1 and word.letterListCmp(a.string[a.cofactorizationSplit:],b.string) < 0):
-                                continue
                             newWord = a+b
                             if word.letterListCmp(newWord.string,maxWord.string) <= 0:
                                 continue
