@@ -571,6 +571,28 @@ class rootSystem:
                             if( betaWord<sumWord == alphaWord < sumWord):
                                 exceptions.append((betaWord,alphaWord))
         return exceptions
+    def getDecompositions(self,weights):
+        if(weights is not np.array):
+            weights = np.array(weights)
+        returnarr = []
+        delta = 0
+        while(delta*self.deltaHeight< sum(weights)):
+            for i in self.baseWeights:
+                if len(self.getWords(weights-i - delta*self.delta)) > 0:
+                    returnarr.append((i,weights-i-delta*self.delta))
+            delta+= 1 
+        return returnarr
+    def getPotentialWords(self,weights):
+        decomps = self.getDecompositions(weights)
+        arr =[]
+        for i in decomps:
+            for j in self.getWords(i[0]):
+                for k in self.getWords(i[1]):
+                    if(j < k):
+                        arr.append(j+k)
+                    else:
+                        arr.append(k+j)
+        return arr
     def TypeADelta(n:int):
         return np.ones(n+1,dtype=int)
     def TypeBDelta(n:int):
