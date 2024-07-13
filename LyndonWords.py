@@ -82,6 +82,8 @@ class word:
         if(lFirst > lSecond):
             return 1
         return 0
+    def noCommas(self):
+        return ''.join(str(i) for i in self.string)
     def printFormat(words, formatfunc):
         for word in words:
             print(formatfunc(word))
@@ -94,10 +96,10 @@ class word:
         base = word.weights - deltaWeight*rootSystem.delta
         return f"{base} + {deltaWeight}d"
     def SLDeltaFormat(word,rootSystem):
-        retstr = str(word)
+        retstr = word.noCommas()
         deltaWords = rootSystem.getWords(rootSystem.delta)
         for i in range(len(deltaWords)):
-            retstr = retstr.replace(str(deltaWords[i]),f"SL_{i+1}(d)")
+            retstr = retstr.replace(deltaWords[i].noCommas(),f"SL_{{{i+1}}}(d)")
         return retstr
 class letterOrdering:
     def __init__(self, letterOrdering):
