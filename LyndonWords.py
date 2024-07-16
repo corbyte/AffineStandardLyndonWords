@@ -502,7 +502,6 @@ class rootSystem:
                                 continue
                             if eitherRootImaginary and not self.eBracket(newWord):
                                 continue
-                            newWord.cofactorizationSplit = a.height
                             maxWord = newWord
                         if(imaginary):
                             if(a.height > 1 and word.letterListCmp(a.string[a.cofactorizationSplit:],b.string) < 0):
