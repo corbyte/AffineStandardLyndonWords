@@ -137,7 +137,7 @@ class rootSystem:
         else:
             return True
         weights = re.weights - (self.delta * re.weights[-1])
-        return np.any(weights[:-1]* (im.hs @self.cartan_matrix))
+        return np.any(weights[:-1]* (self.cartan_matrix @im.hs))
     def hBracket(self,word:word):
         a = self.costfac(word)[0]
         if(a is None):
@@ -186,7 +186,13 @@ class rootSystem:
         self.numberOfBaseWeights = len(self.baseWeights)
         #TODO: Maybe it'd be faster to just generate the base weights and then sort them by length
         if(self.affine):
-            self.cartan_matrix =np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int)
+            if(type == 'C' and self.n == 2):
+                self.cartan_matrix = np.array([
+                    [2,-2],
+                    [-1,2]
+                ])
+            else:
+                self.cartan_matrix =np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int).transpose()
             if(type == 'A'):
                 self.delta = rootSystem.TypeADelta(self.n)
             elif (type == 'B'):
@@ -452,7 +458,7 @@ class rootSystem:
             k+=1
             newWord=self.getWords(weight + k*self.delta)
         return matches
-    def isImaginary(self,height):
+    def isImaginary(self,height:int):
         return (self.affine and height % self.deltaHeight == 0)
     def __genWord(self, combinations:np.array):
         weight = sum(combinations)
