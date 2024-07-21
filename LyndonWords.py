@@ -84,23 +84,6 @@ class word:
         return 0
     def noCommas(self):
         return ''.join(str(i) for i in self.string)
-    def printFormat(words, formatfunc):
-        for word in words:
-            print(formatfunc(word))
-    def costf(words,formatfunc,sep='-'):
-        return sep.join([formatfunc(i) for i in words])
-    def deltaFormat(word,rootSystem):
-        if(word is None):
-            return "None"
-        deltaWeight = word.height//rootSystem.deltaHeight
-        base = word.weights - deltaWeight*rootSystem.delta
-        return f"{base} + {deltaWeight}d"
-    def SLDeltaFormat(word,rootSystem):
-        retstr = word.noCommas()
-        deltaWords = rootSystem.getWords(rootSystem.delta)
-        for i in range(len(deltaWords)):
-            retstr = retstr.replace(deltaWords[i].noCommas(),f"SL_{{{i+1}}}(d)")
-        return retstr
 class letterOrdering:
     def __init__(self, letterOrdering):
         letterOrdering = [letter(str(i),i) for i in letterOrdering]
@@ -184,7 +167,6 @@ class rootSystem:
         elif(self.type == 'G'):
             self.baseWeights = rootSystem.getGWeights(self.affine)
         self.numberOfBaseWeights = len(self.baseWeights)
-        #TODO: Maybe it'd be faster to just generate the base weights and then sort them by length
         if(self.affine):
             if(self.type == 'C' and self.n == 2):
                 self.cartan_matrix = np.array([
@@ -496,7 +478,6 @@ class rootSystem:
                             (a,b) = (word1,word2)
                         else:
                             (a,b) = (word2,word1)
-                        #FIXME:
                         if(not self.affine):
                             if(word.letterListCmp(a.string, maxWord.string) < 0):
                                 continue
@@ -623,3 +604,47 @@ class rootSystem:
         return np.array([2,3,4,2,1],dtype=int)
     def TypeGDelta():
         return np.array([2,3,1],dtype=int)
+    def printFormat(words, formatfunc):
+        for word in words:
+            print(formatfunc(word))
+    def deltaFormat(self,word):
+        if(word is None):
+            return "None"
+        deltaWeight = word.height//self.deltaHeight
+        base = word.weights - deltaWeight*self.delta
+        return f"{base} + {deltaWeight}d"
+    def SLDeltaFormat(self,word):
+        retstr = word.noCommas()
+        deltaWords = self.getWords(self.delta)
+        for i in range(len(deltaWords)):
+            retstr = retstr.replace(deltaWords[i].noCommas(),f"SL_{{{i+1}}}(d)")
+        return retstr
+    def parseToDeltaFormat(self,parseWord:word):
+        retarr = []
+        deltaWords = self.getWords(self.delta)
+        stack = []
+        for letter in parseWord.string:
+            stack.append(letter)
+            if(len(stack) >= self.deltaHeight):
+                for i in range(len(deltaWords)):
+                    deltaWord = deltaWords[i]
+                    if(word.letterListCmp(deltaWord.string,stack[-self.deltaHeight:]) == 0):
+                        if(len(retarr) > 0 and retarr[-1] is list and retarr[-1][0] == i+1):
+                            retarr[-1][1]+=1
+                        else:
+                            if(len(stack) > self.deltaHeight):
+                                string=""
+                                for j in range(len(stack)-self.deltaHeight):
+                                    string+=str(stack[j])
+                                retarr.append(string)
+                            retarr.append([i+1,1])
+                        stack = []
+                        break
+        string=""
+        for j in range(len(stack)):
+            string+=str(stack[j])
+        retarr.append(string)
+        return retarr
+if(__name__ == "__main__"):
+    F4 = rootSystem([0,1,2,3,4],"F",10)
+    F4.parseToDeltaFormat(F4.getWords(8*F4.delta + np.array([0,0,0,0,1]))[0])
