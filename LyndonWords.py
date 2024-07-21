@@ -148,10 +148,10 @@ class rootSystem:
             return -newA[:-1]
         return newA[:-1]
     def __init__(self, ordering,type:str,k:int=0):
-        type = type.upper()
+        self.type = type.upper()
         self.k = k
         self.affine:bool = k != 0
-        if( len(type) != 1 or type < 'A' or type > 'G' ):
+        if( len(self.type) != 1 or self.type < 'A' or self.type > 'G' ):
             raise ValueError('Type is invalid')
         if(self.affine):
             self.n = len(ordering)-1
@@ -171,39 +171,39 @@ class rootSystem:
                 self.minWord = i
             i.cofactorizationSplit = 0
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
-        if(type == 'A'):
+        if(self.type == 'A'):
             self.baseWeights = rootSystem.getAWeights(self.n,self.affine)
-        elif(type == 'B'):
+        elif(self.type == 'B'):
             self.baseWeights = rootSystem.getBWeights(self.n,self.affine)
-        elif(type == 'C'):
+        elif(self.type == 'C'):
             self.baseWeights = rootSystem.getCWeights(self.n,self.affine)
-        elif(type =='D'):
+        elif(self.type =='D'):
             self.baseWeights = rootSystem.getDWeights(self.n,self.affine)
-        elif(type == 'F'):
+        elif(self.type == 'F'):
             self.baseWeights = rootSystem.getFWeights(self.affine)
-        elif(type == 'G'):
+        elif(self.type == 'G'):
             self.baseWeights = rootSystem.getGWeights(self.affine)
         self.numberOfBaseWeights = len(self.baseWeights)
         #TODO: Maybe it'd be faster to just generate the base weights and then sort them by length
         if(self.affine):
-            if(type == 'C' and self.n == 2):
+            if(self.type == 'C' and self.n == 2):
                 self.cartan_matrix = np.array([
                     [2,-2],
                     [-1,2]
                 ])
             else:
-                self.cartan_matrix =np.array(sympy_RootSystem(type +str(self.n)).cartan_matrix(),dtype=int).transpose()
-            if(type == 'A'):
+                self.cartan_matrix =np.array(sympy_RootSystem(self.type +str(self.n)).cartan_matrix(),dtype=int).transpose()
+            if(self.type == 'A'):
                 self.delta = rootSystem.TypeADelta(self.n)
-            elif (type == 'B'):
+            elif (self.type == 'B'):
                 self.delta = rootSystem.TypeBDelta(self.n) 
-            elif(type == 'C'):
+            elif(self.type == 'C'):
                 self.delta = rootSystem.TypeCDelta(self.n)
-            elif(type == 'D'):
+            elif(self.type == 'D'):
                 self.delta = rootSystem.TypeDDelta(self.n)
-            elif(type == 'F'):
+            elif(self.type == 'F'):
                 self.delta = rootSystem.TypeFDelta()
-            elif(type == 'G'):
+            elif(self.type == 'G'):
                 self.delta = rootSystem.TypeGDelta()
             self.deltaHeight = sum(self.delta)
             #Generates the words
@@ -341,7 +341,7 @@ class rootSystem:
         return np.array(arr)
     def getFWeights(affine:bool=False):
         arr = []
-        for i in [[0,1,0,0],[0,0,1,0],[0,0,0,1],[1,0,0,0],[0,0,1,1],[0,1,1,1],
+        for i in [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[0,0,1,1],[0,1,1,1],
                   [0,1,2,2],[0,1,2,1],[1,1,1,1],[1,1,2,1],[1,2,2,1],[1,2,3,1],
                   [0,1,2,0],[1,1,2,0],[1,2,2,0],[1,2,2,2],[1,1,1,0],[0,1,1,0],
                   [1,3,4,2],[2,3,4,2],[1,1,2,2],[1,2,3,2],[1,1,0,0],[1,2,4,2]]:
