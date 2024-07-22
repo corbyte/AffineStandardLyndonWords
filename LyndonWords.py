@@ -629,7 +629,7 @@ class rootSystem:
                 for i in range(len(deltaWords)):
                     deltaWord = deltaWords[i]
                     if(word.letterListCmp(deltaWord.string,stack[-self.deltaHeight:]) == 0):
-                        if(len(retarr) > 0 and retarr[-1] is list and retarr[-1][0] == i+1):
+                        if(len(retarr) > 0 and type(retarr[-1]) is list and retarr[-1][0] == i+1):
                             retarr[-1][1]+=1
                         else:
                             if(len(stack) > self.deltaHeight):
