@@ -645,6 +645,35 @@ class rootSystem:
             string+=str(stack[j])
         retarr.append(string)
         return retarr
+    def getPeriodicity(self, simpleRoot,slIndex:int = 0) -> int:
+        factors = []
+        for i in self.getAffineWords(simpleRoot):
+            tempArr = []
+            for k in self.costfac(i):
+                if(k is None):
+                    tempArr.append([np.zeros(len(i),dtype=int),0])
+                else:
+                    imaginaryIndex=0
+                    if(self.isImaginary(k.height)):
+                        imaginaryIndex = slIndex+1
+                    tempArr.append([k.weights - (k.height//self.deltaHeight)*self.delta,k.height//self.deltaHeight,imaginaryIndex])
+            factors.append(tempArr)
+        repeat = 1
+        if(self.isImaginary(sum(simpleRoot))):
+            repeat = self.n
+        strings = factors[slIndex::repeat]
+        for width in range(1,len(strings)//2):
+            for windowStart in range(1,(len(strings)-2*width)):
+                countEqual = 0
+                for i in range(width):
+                    arr1 = np.array([strings[windowStart+i + width*j][0][0] for j in range((len(strings)-(windowStart+i))//width)])
+                    arr2 = np.array([strings[windowStart+i + width*j][1][0] for j in range((len(strings)-(windowStart+i))//width)])
+                    if (arr1 == arr1[0]).all() and (arr2 == arr2[0]).all():
+                        countEqual+= 1
+                    else:
+                        break
+                if(countEqual == width):
+                    return width
 if(__name__ == "__main__"):
     F4 = rootSystem([0,1,2,3,4],"F",10)
     F4.parseToDeltaFormat(F4.getWords(8*F4.delta + np.array([0,0,0,0,1]))[0])
