@@ -3,3 +3,4 @@ Notes
 out.txt
 __pycache__/tests.cpython-311.pyc
 note.txt
+*.csv
