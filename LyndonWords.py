@@ -630,7 +630,7 @@ class rootSystem:
         return delta
     def TypeEDelta(n:int):
         if(n == 6):
-            return np.array([1,2,3,2,2,1,1],dtype=int)
+            return np.array([1,2,2,3,2,1,1],dtype=int)
     def TypeFDelta():
         return np.array([2,3,4,2,1],dtype=int)
     def TypeGDelta():
