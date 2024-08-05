@@ -409,8 +409,6 @@ class rootSystem:
     def costfac(self,wordToFactor:word):
         if(wordToFactor.height == 1):
             return (wordToFactor,None)
-        if wordToFactor.height == 25:
-            pass
         weight = np.copy(wordToFactor.weights)
         weight[wordToFactor.string[0].rootIndex -1] -= 1
         splitLetter = None
@@ -660,14 +658,14 @@ class rootSystem:
                 for i in range(len(deltaWords)):
                     deltaWord = deltaWords[i]
                     if(word.letterListCmp(deltaWord.string,stack[-self.deltaHeight:]) == 0):
+                        string = ""
+                        for stackLetter in stack[:-self.deltaHeight]:
+                            string+=str(stackLetter)
+                        if(string != ""):
+                            retarr.append(string)
                         if(len(retarr) > 0 and type(retarr[-1]) is list and retarr[-1][0] == i+1):
                             retarr[-1][1]+=1
                         else:
-                            if(len(stack) > self.deltaHeight):
-                                string=""
-                                for j in range(len(stack)-self.deltaHeight):
-                                    string+=str(stack[j])
-                                retarr.append(string)
                             retarr.append([i+1,1])
                         stack = []
                         break
