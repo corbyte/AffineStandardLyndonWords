@@ -176,7 +176,7 @@ class rootSystem:
                     [-1,2]
                 ])
             else:
-                self.cartan_matrix =np.array(sympy_RootSystem(self.type +str(self.n)).cartan_matrix(),dtype=int).transpose()
+                self.cartan_matrix = rootSystem.getCartanMatrix(self.type,self.n)
             if(self.type == 'A'):
                 self.delta = rootSystem.TypeADelta(self.n)
             elif (self.type == 'B'):
@@ -357,22 +357,36 @@ class rootSystem:
         return arr
     def getEWeights(n,affine:bool=False):
         arr = []
+        weights  = []
         if(n==6):
-            sixWeights = [
+            weights = [
                 [1,0,0,0,0,0],[0,1,0,0,0,0],[0,0,1,0,0,0],[0,0,0,1,0,0],[0,0,0,0,1,0],[0,0,0,0,0,1],
-                [0,1,0,1,0,0],[0,1,0,1,1,0],[0,1,0,1,1,1],[0,1,1,1,0,0],[0,1,1,1,1,0],
-                [0,1,1,1,1,1],[0,1,1,2,1,0],[0,1,1,2,1,1],[0,1,1,2,2,1],[0,0,1,1,0,0],
-                [0,0,1,1,1,0],[0,0,1,1,1,1],[0,0,0,1,1,0],[0,0,0,1,1,1],[0,0,0,0,1,1],
-                [1,2,2,3,2,1],[1,1,1,1,0,0],[1,1,1,1,1,0],[1,1,1,1,1,1],[1,1,1,2,1,0],
-                [1,1,1,2,1,1],[1,1,1,2,2,1],[1,1,2,2,1,0],[1,1,2,2,1,1],[1,1,2,2,2,1],
-                [1,0,1,0,0,0],[1,1,2,3,2,1],[1,0,1,1,0,0],[1,0,1,1,1,0],[1,0,1,1,1,1]
+                [1,1,0,0,0,0],[0,1,1,0,0,0],[0,0,1,1,0,0],[0,0,1,0,0,1],[0,0,0,1,1,0],[1,1,1,0,0,0],
+                [0,1,1,1,0,0],[0,0,1,1,1,0],[0,1,1,0,0,1],[0,0,1,1,0,1],[0,1,1,1,0,1],[1,1,1,1,0,0],
+                [1,1,1,0,0,1],[0,1,1,1,1,0],[0,0,1,1,1,1],[1,1,1,1,0,1],[0,1,2,1,0,1],[1,1,1,1,1,0],
+                [0,1,1,1,1,1],[1,1,1,1,1,1],[1,1,2,1,0,1],[0,1,2,1,1,1],[1,1,2,1,1,1],[1,2,2,1,0,1],
+                [0,1,2,2,1,1],[1,1,2,2,1,1],[1,2,2,1,1,1],[1,2,2,2,1,1],[1,2,3,2,1,1],[1,2,3,2,1,2]
             ]
-            for i in sixWeights:
-                if(affine):
-                    i.append(0)
-                arr.append(np.array(i,dtype=int))
+        if(n==7):
+            weights = [
+                [1,0,0,0,0,0,0],[0,1,0,0,0,0,0],[0,0,1,0,0,0,0],[0,0,0,1,0,0,0],[0,0,0,0,1,0,0],[0,0,0,0,0,1,0],
+                [0,0,0,0,0,0,1],[1,1,0,0,0,0,0],[0,1,1,0,0,0,0],[0,0,1,1,0,0,0],[0,0,0,1,1,0,0],[0,0,0,1,0,0,1],
+                [0,0,0,0,1,1,0],[1,1,1,0,0,0,0],[0,1,1,1,0,0,0],[0,0,1,1,1,0,0],[0,0,0,1,1,1,0],[0,0,1,1,0,0,1],
+                [0,0,0,1,1,0,1],[0,0,1,1,1,0,1],[1,1,1,1,0,0,0],[0,1,1,1,1,0,0],[0,1,1,1,0,0,1],[0,0,1,1,1,1,0],
+                [0,0,0,1,1,1,1],[0,1,1,1,1,0,1],[1,1,1,1,1,0,0],[1,1,1,1,0,0,1],[0,0,1,2,1,0,1],[0,1,1,1,1,1,0],
+                [0,0,1,1,1,1,1],[0,1,1,1,1,1,1],[1,1,1,1,1,1,0],[1,1,1,1,1,0,1],[0,1,1,2,1,0,1],[0,0,1,2,1,1,1],
+                [1,1,1,1,1,1,1],[0,1,1,2,1,1,1],[0,1,2,2,1,0,1],[1,1,1,2,1,0,1],[0,0,1,2,2,1,1],[1,1,2,2,1,0,1],
+                [1,1,1,2,1,1,1],[0,1,1,2,2,1,1],[0,1,2,2,1,1,1],[1,2,2,2,1,0,1],[0,1,2,2,2,1,1],[1,1,2,2,1,1,1],
+                [1,1,1,2,2,1,1],[1,1,2,2,2,1,1],[1,2,2,2,1,1,1],[0,1,2,3,2,1,1],[1,1,2,3,2,1,1],[1,2,2,2,2,1,1],
+                [0,1,2,3,2,1,2],[1,2,2,3,2,1,1],[1,1,2,3,2,1,2],[1,2,3,3,2,1,1],[1,2,2,3,2,1,2],[1,2,3,3,2,1,2],
+                [1,2,3,4,2,1,2],[1,2,3,4,3,1,2],[1,2,3,4,3,2,2]
+            ]
         else:
             raise Exception("Weights not implemented")
+        for i in weights:
+            if(affine):
+                i.append(0)
+            arr.append(np.array(i,dtype=int))
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeEDelta(n))
         arr.sort(key = sum)
@@ -628,7 +642,9 @@ class rootSystem:
         return delta
     def TypeEDelta(n:int):
         if(n == 6):
-            return np.array([1,2,2,3,2,1,1],dtype=int)
+            return np.array([1,2,3,2,1,2,1],dtype=int)
+        if(n == 7):
+            return np.array([1,2,3,4,3,2,2,1],dtype=int)
     def TypeFDelta():
         return np.array([2,3,4,2,1],dtype=int)
     def TypeGDelta():
@@ -674,6 +690,61 @@ class rootSystem:
             string+=str(stack[j])
         retarr.append(string)
         return retarr
+    def getCartanMatrix(type:str,n:int):
+        if(n <= 0):
+            raise ValueError("Invalid Parameters")
+        type=type.upper()
+        if(type == 'A'):
+            mat = 2*np.eye(n,dtype=int)
+            for i in range(0,n-1):
+                mat[i][i+1] = -1
+                mat[i+1][i] = -1
+            return mat
+        elif(type == 'B'):
+            mat = 2*np.eye(n,dtype=int)
+            for i in range(0,n-2):
+                mat[i][i+1] = -1
+                mat[i+1][i] = -1
+            mat[-1][-2] = -2
+            mat[-2][-1] = -1
+            return mat
+        elif(type == 'C'):
+            mat = 2*np.eye(n,dtype=int)
+            for i in range(0,n-2):
+                mat[i][i+1] = -1
+                mat[i+1][i] = -1
+            mat[-1][-2] = -1
+            mat[-2][-1] = -2
+            return mat
+        elif(type == 'D'):
+            mat = 2*np.eye(n,dtype=int)
+            for i in range(0,n-2):
+                mat[i][i+1] = -1
+                mat[i+1][i] = -1
+            mat[-1][-3] = -1
+            mat[-3][-1] = -1
+            return mat
+        elif(type == 'E'):
+            if(n >= 6 and n <= 8):
+                mat = 2*np.eye(n,dtype=int)
+                for i in range(0,n-2):
+                    mat[i][i+1] = -1
+                    mat[i+1][i] = -1 
+                mat[-1][-4] = -1
+                mat[-4][-1] = -1
+                return mat
+        elif(type == 'F'):
+            if(n == 4):
+                mat = 2*np.eye(n,dtype=int)
+                for i in range(0,n-1):
+                    mat[i][i+1] = -1
+                    mat[i+1][i] = -1
+                mat[2][1] = -2
+                return mat
+        elif(type == 'G'):
+            if(n == 2):
+                return np.array([[2,-3],[-1,2]], dtype=int)
+        raise ValueError("Invalid parameters")
     def getPeriodicity(self, simpleRoot,slIndex:int = 0) -> int:
         factors = []
         for i in self.getAffineWords(simpleRoot):
