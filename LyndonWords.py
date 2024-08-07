@@ -1,18 +1,13 @@
 import numpy as np
-import argparse
-from scipy import sparse
-from sympy.liealgebras.root_system import RootSystem as sympy_RootSystem
 class letter:
     index:int
-    value:str
     rootIndex:int
-    def __init__(self, v:str="",rootIndex:int=0):
-        self.value = v
+    def __init__(self,rootIndex:int=0):
         self.rootIndex = rootIndex
     def set_index(self, i:int):
         self.index = i
     def __str__(self):
-        return self.value
+        return str(self.rootIndex)
     def __lt__(self, other):
         return self.index < other.index
     def __eq__(self,other):
@@ -86,7 +81,7 @@ class word:
         return ''.join(str(i) for i in self.string)
 class letterOrdering:
     def __init__(self, letterOrdering):
-        letterOrdering = [letter(str(i),i) for i in letterOrdering]
+        letterOrdering = [letter(i) for i in letterOrdering]
         self.order:list[letter] = letterOrdering
         for i in range(len(letterOrdering)):
             self.order[i].index = i
@@ -367,7 +362,7 @@ class rootSystem:
                 [0,1,1,1,1,1],[1,1,1,1,1,1],[1,1,2,1,0,1],[0,1,2,1,1,1],[1,1,2,1,1,1],[1,2,2,1,0,1],
                 [0,1,2,2,1,1],[1,1,2,2,1,1],[1,2,2,1,1,1],[1,2,2,2,1,1],[1,2,3,2,1,1],[1,2,3,2,1,2]
             ]
-        if(n==7):
+        elif(n==7):
             weights = [
                 [1,0,0,0,0,0,0],[0,1,0,0,0,0,0],[0,0,1,0,0,0,0],[0,0,0,1,0,0,0],[0,0,0,0,1,0,0],[0,0,0,0,0,1,0],
                 [0,0,0,0,0,0,1],[1,1,0,0,0,0,0],[0,1,1,0,0,0,0],[0,0,1,1,0,0,0],[0,0,0,1,1,0,0],[0,0,0,1,0,0,1],
@@ -688,7 +683,8 @@ class rootSystem:
         string=""
         for j in range(len(stack)):
             string+=str(stack[j])
-        retarr.append(string)
+        if(len(string) > 0): 
+            retarr.append(string)
         return retarr
     def getCartanMatrix(type:str,n:int):
         if(n <= 0):
@@ -739,7 +735,7 @@ class rootSystem:
                 for i in range(0,n-1):
                     mat[i][i+1] = -1
                     mat[i+1][i] = -1
-                mat[2][1] = -2
+                mat[1][2] = -2
                 return mat
         elif(type == 'G'):
             if(n == 2):
