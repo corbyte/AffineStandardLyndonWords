@@ -100,6 +100,11 @@ class letterOrdering:
         temp = self.order[self.iterIndex]
         self.iterIndex+=1
         return temp
+    def toList(self):
+        lst = np.zeros(len(letterOrdering),dtype=int)
+        for let in self.order:
+            lst[let.rootIndex] = let.index
+        return let
 
 class rootSystem:
     def eBracket(self, bracketWord:word):            
@@ -140,7 +145,7 @@ class rootSystem:
         self.minWord:word = None
         def weightsGeneration(letter):
             arr = np.zeros(len(self.ordering),dtype=int)
-            arr[letter.rootIndex-1] = 1
+            arr[letter.rootIndex] = 1
             return arr
         for i in [word([i],weightsGeneration(i)) for i in self.ordering.order]:
             if(self.minWord is None):
@@ -163,6 +168,7 @@ class rootSystem:
             self.baseWeights = rootSystem.getFWeights(self.affine)
         elif(self.type == 'G'):
             self.baseWeights = rootSystem.getGWeights(self.affine)
+        self.__adjDict = self.__genAdjacencyDict()
         self.numberOfBaseWeights = len(self.baseWeights)
         if(self.affine):
             if(self.type == 'C' and self.n == 2):
@@ -415,19 +421,32 @@ class rootSystem:
                 break
             arr.append(delta - i)
         arr.append(delta)
+    def __genAdjacencyDict(self):
+        dict = {}
+        for weight in self.baseWeights:
+            adjacents = []
+            for otherWeight in self.baseWeights:
+                if(sum(otherWeight) - sum(weight) == 1 and np.all(np.unique(otherWeight - weight) == [0,1])):
+                    adjacents.append(otherWeight)
+            dict[weight.tobytes()] = np.array(adjacents,dtype=int)
+        return dict
+    def getAdjDict(self,arr):
+        if(type(arr) == list):
+            arr = np.array(arr,dtype=int)
+        return self.__adjDict[arr.tobytes()]
     def costfac(self,wordToFactor:word):
         if(wordToFactor.height == 1):
             return (wordToFactor,None)
         weight = np.copy(wordToFactor.weights)
-        weight[wordToFactor.string[0].rootIndex -1] -= 1
+        weight[wordToFactor.string[0].rootIndex] -= 1
         splitLetter = None
         for i in self.ordering:
-            if(weight[i.rootIndex-1] != 0):
+            if(weight[i.rootIndex] != 0):
                 splitLetter = i
                 break
-        weight[wordToFactor.string[0].rootIndex -1] += 1
+        weight[wordToFactor.string[0].rootIndex] += 1
         for i in range(1,wordToFactor.height):
-            weight[wordToFactor.string[i-1].rootIndex -1] -= 1
+            weight[wordToFactor.string[i-1].rootIndex] -= 1
             if(wordToFactor.string[i].index != splitLetter.index):
                 continue
             rightWords = self.getWords(weight)
