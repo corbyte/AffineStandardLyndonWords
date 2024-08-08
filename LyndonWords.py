@@ -100,11 +100,11 @@ class letterOrdering:
         temp = self.order[self.iterIndex]
         self.iterIndex+=1
         return temp
-    def toList(self):
-        lst = np.zeros(len(letterOrdering),dtype=int)
+    def toList(self) -> np.ndarray:
+        lst = np.zeros(len(self.order),dtype=int)
         for let in self.order:
             lst[let.rootIndex] = let.index
-        return let
+        return lst
 
 class rootSystem:
     def eBracket(self, bracketWord:word):            
@@ -119,17 +119,17 @@ class rootSystem:
             im = B
         else:
             return True
-        weights = re.weights - (self.delta * re.weights[-1])
-        return np.any(weights[:-1]* (self.cartan_matrix @im.hs))
+        weights = re.weights - (self.delta * re.weights[0])
+        return np.any(weights[1:]* (self.cartan_matrix @im.hs))
     def hBracket(self,word:word):
         a = self.costfac(word)[0]
         if(a is None):
             return np.zeros(self.n,dtype=int)
         word.cofactorizationSplit = a.height
-        newA = (a.weights - (self.delta *a.weights[-1]))
+        newA = (a.weights - (self.delta *a.weights[0]))
         if(np.any(newA < 0)):
-            return -newA[:-1]
-        return newA[:-1]
+            return -newA[1:]
+        return newA[1:]
     def __init__(self, ordering,type:str,k:int=0):
         self.type = type.upper()
         self.k = k
@@ -155,19 +155,19 @@ class rootSystem:
             i.cofactorizationSplit = 0
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
         if(self.type == 'A'):
-            self.baseWeights = rootSystem.getAWeights(self.n,self.affine)
+            self.baseWeights = rootSystem.getAWeights(self.n)
         elif(self.type == 'B'):
-            self.baseWeights = rootSystem.getBWeights(self.n,self.affine)
+            self.baseWeights = rootSystem.getBWeights(self.n)
         elif(self.type == 'C'):
-            self.baseWeights = rootSystem.getCWeights(self.n,self.affine)
+            self.baseWeights = rootSystem.getCWeights(self.n)
         elif(self.type =='D'):
-            self.baseWeights = rootSystem.getDWeights(self.n,self.affine)
+            self.baseWeights = rootSystem.getDWeights(self.n)
         elif(self.type == 'E'):
-            self.baseWeights = rootSystem.getEWeights(self.n,self.affine)
+            self.baseWeights = rootSystem.getEWeights(self.n)
         elif(self.type == 'F'):
-            self.baseWeights = rootSystem.getFWeights(self.affine)
+            self.baseWeights = rootSystem.getFWeights()
         elif(self.type == 'G'):
-            self.baseWeights = rootSystem.getGWeights(self.affine)
+            self.baseWeights = rootSystem.getGWeights()
         self.__adjDict = self.__genAdjacencyDict()
         self.numberOfBaseWeights = len(self.baseWeights)
         if(self.affine):
@@ -206,28 +206,22 @@ class rootSystem:
             for i in currentWeights:
                 self.__genWord(i)
                 i += self.delta
-    def getAWeights(n,affine=False):
-        size = n
-        if(affine):
-            size += 1
+    def getAWeights(n):
+        size = n + 1
         arr = []
         for length in range(1,n+1):
             for start in range(0,n - length + 1):
                 comb = np.zeros(size,dtype=int)
                 for k in range(start,start+length):
-                    comb[k] = 1
+                    comb[k+1] = 1
                 arr.append(comb)
-        if(affine):
-            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeADelta(n))
+        rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeADelta(n))
         arr.sort(key = sum)
         return np.array(arr) 
-    def getBWeights(n,affine=False):
-        if(affine):
-            size = n+1
-        else:
-            size = n
+    def getBWeights(n):
+        size = n+1
         arr = []
-        for i in range(n):
+        for i in range(1,n+1):
             comb = np.zeros(size,dtype=int)
             comb[i] = 1
             arr.append(comb)
@@ -236,44 +230,41 @@ class rootSystem:
             if(length <= n):
                 comb = np.zeros(size,dtype=int)
                 for i in range(n-length,n):
-                    comb[i] = 1
+                    comb[i+1] = 1
                 arr.append(comb)
                 if(length != n):
                     #ei - ej
                     for start in range(0,n - length):
                         comb = np.zeros(size,dtype=int)
                         for k in range(start,start+length):
-                            comb[k] = 1
+                            comb[k+1] = 1
                         arr.append(comb)
             #ei + ej
             if(length >= 3):
                 comb = np.zeros(size,dtype=int)
-                comb[n-1] = 2
+                comb[n] = 2
                 for i in range(n-min(length-1,n),n-1):
-                    comb[i] = 1
+                    comb[i+1] = 1
                 oneIndex = n-min(length-1,n)
                 twoIndex = n-1
                 while(sum(comb) < length):
                     twoIndex -= 1
-                    comb[twoIndex] = 2
+                    comb[twoIndex+1] = 2
                 while(oneIndex < twoIndex):
                     arr.append(np.array(comb,dtype=int))
                     twoIndex -= 1
-                    comb[twoIndex] = 2
-                    comb[oneIndex] = 0
+                    comb[twoIndex+1] = 2
+                    comb[oneIndex+1] = 0
                     oneIndex+=1
-        if(affine):
-            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeBDelta(n))
+        rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeBDelta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def getCWeights(n,affine:bool=False):
-        size = n
-        if(affine):
-            size+=1
+    def getCWeights(n):
+        size = n+1
         arr = []
         for i in range(n):
             comb = np.zeros(size,dtype=int)
-            comb[i] = 1
+            comb[i+1] = 1
             arr.append(comb)
         for length in range(2,2*n):
             if(length <= 2*n -2):
@@ -281,82 +272,78 @@ class rootSystem:
                 comb = np.zeros(size,dtype=int)
                 i = n-1
                 while i >= 0 and n-i <= length:
-                    comb[i] = 1
+                    comb[i+1] = 1
                     i -= 1
                 oneIndex = i+1
                 twoIndex = n-1
                 while(sum(comb) < length):
                     twoIndex -= 1
-                    comb[twoIndex] = 2
+                    comb[twoIndex+1] = 2
                 while(oneIndex < twoIndex):
                     arr.append(np.copy(comb))
                     twoIndex -= 1
-                    comb[twoIndex] = 2
-                    comb[oneIndex] = 0
+                    comb[twoIndex+1] = 2
+                    comb[oneIndex+1] = 0
                     oneIndex+=1
             #i-j
             if(length < n):
                 for start in range(0,n-length):
                     comb = np.zeros(size,dtype=int)
                     for k in range(start,start+length):
-                        comb[k] =1
+                        comb[k+1] =1
                     arr.append(comb)
             #2i
             if(length % 2 == 1):
                 comb=np.zeros(size,dtype=int)
-                comb[n-1] = 1
+                comb[n] = 1
                 for k in range(n-2,n-2-length//2,-1):
-                    comb[k] = 2
+                    comb[k+1] = 2
                 arr.append(comb)
-        if(affine):
-            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeCDelta(n))
+        rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeCDelta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def getDWeights(n,affine=False):
-        size=n
-        if(affine):
-            size = n+1
+    def getDWeights(n):
+        size = n+1
         arr = []
         for i in range(n):
             comb = np.zeros(size,dtype=int)
-            comb[i] = 1
+            comb[i+1] = 1
             arr.append(comb)
         for length in range(2,2*n-2):
             #i-j
             for start in range(0,n - length):
                 comb = np.zeros(size,dtype=int)
                 for k in range(start,start+length):
-                    comb[k] = 1
+                    comb[k+1] = 1
                 arr.append(comb)
             #i+j
             if(length < n):
                 comb=np.zeros(size,dtype=int)
-                comb[n-1] =1
+                comb[n] =1
                 for i in range(n-1-length,n-2):
-                    comb[i] = 1
+                    comb[i+1] = 1
                 arr.append(np.copy(comb))
             if(length >= 3):
                 comb=np.zeros(size,dtype=int)
+                comb[n] = 1
                 comb[n-1] = 1
-                comb[n-2] = 1
                 for i in range(n-min(length,n),n-2):
-                    comb[i] = 1
+                    comb[i+1] = 1
                 oneIndex = n-min(length,n)
                 twoIndex = n-2
                 while(sum(comb) < length):
                     twoIndex -= 1
-                    comb[twoIndex] = 2
+                    comb[twoIndex+1] = 2
                 while(oneIndex < twoIndex):
                     arr.append(np.copy(comb))
                     twoIndex -= 1
-                    comb[twoIndex] = 2
-                    comb[oneIndex] = 0
+                    comb[twoIndex+1] = 2
+                    comb[oneIndex+1] = 0
                     oneIndex+=1
-        if(affine):
-            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeDDelta(n))
+        rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeDDelta(n))
         arr.sort(key = sum)
         return arr
-    def getEWeights(n,affine:bool=False):
+    def getEWeights(n,affine:bool=True):
         arr = []
         weights  = []
         if(n==6):
@@ -386,30 +373,30 @@ class rootSystem:
             raise Exception("Weights not implemented")
         for i in weights:
             if(affine):
-                i.append(0)
+                i = np.insert(i,0,0)
             arr.append(np.array(i,dtype=int))
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeEDelta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def getFWeights(affine:bool=False):
+    def getFWeights(affine:bool=True):
         arr = []
         for i in [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[0,0,1,1],[0,1,1,1],
                   [0,1,2,2],[0,1,2,1],[1,1,1,1],[1,1,2,1],[1,2,2,1],[1,2,3,1],
                   [0,1,2,0],[1,1,2,0],[1,2,2,0],[1,2,2,2],[1,1,1,0],[0,1,1,0],
                   [1,3,4,2],[2,3,4,2],[1,1,2,2],[1,2,3,2],[1,1,0,0],[1,2,4,2]]:
             if(affine):
-                i.append(0)
+                i = np.insert(i,0,0)
             arr.append(np.array(i,dtype=int))
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeFDelta())
         arr.sort(key = sum)
         return np.array(arr)
-    def getGWeights(affine:bool=False)-> np.array:
+    def getGWeights(affine:bool=True)-> np.array:
         arr = []
         for i in [[1,0],[0,1],[1,1],[1,2],[1,3],[2,3]]:
             if(affine):
-                i.append(0)
+                i = np.insert(i,0,0)
             arr.append(np.array(i,dtype=int))
         if(affine):
             rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeGDelta())
@@ -417,7 +404,7 @@ class rootSystem:
         return np.array(arr)
     def __genAffineBaseWeights(arr,delta:np.array):
         for i in arr:
-            if(i[-1] == 1):
+            if(i[0] == 1):
                 break
             arr.append(delta - i)
         arr.append(delta)
@@ -639,30 +626,30 @@ class rootSystem:
         return np.ones(n+1,dtype=int)
     def TypeBDelta(n:int):
         arr = np.repeat(2,n+1)
-        arr[-1] = 1
         arr[0] = 1
+        arr[1] = 1
         return arr
     def TypeCDelta(n:int):
         delta = np.repeat(2,n+1)
+        delta[0] = 1
         delta[-1] = 1
-        delta[-2] = 1
         return delta
     def TypeDDelta(n:int):
         delta = np.repeat(2,n+1)
-        delta[-1] =1
+        delta[0] =1
+        delta[-1] = 1
         delta[-2] = 1
-        delta[-3] = 1
-        delta[0] = 1
+        delta[1] = 1
         return delta
     def TypeEDelta(n:int):
         if(n == 6):
-            return np.array([1,2,3,2,1,2,1],dtype=int)
+            return np.array([1,1,2,3,2,1,2],dtype=int)
         if(n == 7):
-            return np.array([1,2,3,4,3,2,2,1],dtype=int)
+            return np.array([1,1,2,3,4,3,2,2],dtype=int)
     def TypeFDelta():
-        return np.array([2,3,4,2,1],dtype=int)
+        return np.array([1,2,3,4,2],dtype=int)
     def TypeGDelta():
-        return np.array([2,3,1],dtype=int)
+        return np.array([1,2,3],dtype=int)
     def printFormat(words, formatfunc):
         for word in words:
             print(formatfunc(word))
