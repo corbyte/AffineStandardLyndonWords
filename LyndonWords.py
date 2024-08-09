@@ -436,7 +436,7 @@ class rootSystem:
             weight[wordToFactor.string[i-1].rootIndex] -= 1
             if(wordToFactor.string[i].index != splitLetter.index):
                 continue
-            rightWords = self.getWords(weight)
+            rightWords = self.__getWords(weight)
             rightWord = None
             for rWord in rightWords:
                 flag = True
@@ -450,7 +450,7 @@ class rootSystem:
             if(rightWord is None):
                 continue
             leftWord = None
-            leftWords = self.getWords(wordToFactor.weights-weight)    
+            leftWords = self.__getWords(wordToFactor.weights-weight)    
             for lWord in leftWords:
                 flag = True
                 for j in range(lWord.height):
@@ -464,22 +464,24 @@ class rootSystem:
                 continue
             return (leftWord,rightWord)
         return (None,None)
-    def getWords(self, combination:np.array):
+    def __getWords(self, combination:np.array):
         bytes = combination.tobytes()
         if(not bytes in self.weightToWordDictionary):
             return []
         else:
             return self.weightToWordDictionary[bytes]
+    def getWords(self, combination):
+        return self.__getWords(np.array(combination, dtype=int))
     def getAffineWords(self,weight):
         if not self.affine:
             raise ValueError('Cannot call getAffineWords on a simple Lie algebra')
         matches = []
         k=0
-        newWord = self.getWords(weight + k*self.delta)
+        newWord = self.__getWords(weight + k*self.delta)
         while len(newWord) > 0:
             matches.extend(newWord)
             k+=1
-            newWord=self.getWords(weight + k*self.delta)
+            newWord=self.__getWords(weight + k*self.delta)
         return matches
     def isImaginary(self,height:int):
         return (self.affine and height % self.deltaHeight == 0)
@@ -504,7 +506,7 @@ class rootSystem:
                 if(iSum > lengthChecked):
                     break
                 j = combinations-i
-                words2 = self.getWords(j)
+                words2 = self.__getWords(j)
                 if(len(words2) == 0):
                     validBase[baseWordIndex] = False
                     continue
@@ -512,7 +514,7 @@ class rootSystem:
                 eitherRootImaginary = (self.isImaginary(iSum) or self.isImaginary(weight-iSum))
                 if(imaginary and eitherRootImaginary):
                     continue
-                words1 = self.getWords(i)
+                words1 = self.__getWords(i)
                 for word1 in words1:
                     for word2 in words2:
                         if(word1< word2):
@@ -587,7 +589,7 @@ class rootSystem:
                 continue
             if(filter == 'Decreasing' and monotonicity != -1):
                 continue
-            returnarr.append((self.getWords(i)[0].weights,monotonicity))
+            returnarr.append((self.__getWords(i)[0].weights,monotonicity))
         return np.array(returnarr, dtype=object)
     def checkConvexity(self):
         exceptions = []
@@ -596,7 +598,7 @@ class rootSystem:
             for sumWord in wordsByLength[wordIndex]:
                 for alphaWords in wordsByLength[:wordIndex]:
                     for alphaWord in alphaWords:
-                        for betaWord in self.getWords(sumWord.weights - alphaWord.weights):
+                        for betaWord in self.__getWords(sumWord.weights - alphaWord.weights):
                             if( betaWord<sumWord == alphaWord < sumWord):
                                 exceptions.append((betaWord,alphaWord))
         return exceptions
@@ -607,7 +609,7 @@ class rootSystem:
         delta = 0
         while(delta*self.deltaHeight< sum(weights)):
             for i in self.baseWeights:
-                if len(self.getWords(weights-i - delta*self.delta)) > 0:
+                if len(self.__getWords(weights-i - delta*self.delta)) > 0:
                     returnarr.append((i,weights-i-delta*self.delta))
             delta+= 1 
         return returnarr
@@ -615,8 +617,8 @@ class rootSystem:
         decomps = self.getDecompositions(weights)
         arr =[]
         for i in decomps:
-            for j in self.getWords(i[0]):
-                for k in self.getWords(i[1]):
+            for j in self.__getWords(i[0]):
+                for k in self.__getWords(i[1]):
                     if(j < k):
                         arr.append(j+k)
                     else:
@@ -661,13 +663,13 @@ class rootSystem:
         return f"{base} + {deltaWeight}d"
     def SLDeltaFormat(self,word):
         retstr = word.noCommas()
-        deltaWords = self.getWords(self.delta)
+        deltaWords = self.__getWords(self.delta)
         for i in range(len(deltaWords)):
             retstr = retstr.replace(deltaWords[i].noCommas(),f"SL_{{{i+1}}}(d)")
         return retstr
     def parseToDeltaFormat(self,parseWord:word):
         retarr = []
-        deltaWords = self.getWords(self.delta)
+        deltaWords = self.__getWords(self.delta)
         stack = []
         for letter in parseWord.string:
             stack.append(letter)
@@ -778,4 +780,4 @@ class rootSystem:
                     return width
 if(__name__ == "__main__"):
     F4 = rootSystem([0,1,2,3,4],"F",10)
-    F4.parseToDeltaFormat(F4.getWords(8*F4.delta + np.array([0,0,0,0,1]))[0])
+    F4.parseToDeltaFormat(F4.__getWords(8*F4.delta + np.array([0,0,0,0,1]))[0])
