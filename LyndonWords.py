@@ -60,7 +60,7 @@ class word:
         return not (self == other)
     def __add__(self,other):
         return word(np.concatenate((self.string,other.string),dtype=word),self.weights + other.weights) 
-    def letterListCmp(first:np.array,second:np.array):
+    def letterListCmp(first,second):
         lFirst = len(first)
         lSecond = len(second)
         if(lFirst < lSecond):
@@ -77,6 +77,25 @@ class word:
         if(lFirst > lSecond):
             return 1
         return 0
+    def strictLetterListCmp(first,second):
+        lFirst = len(first)
+        lSecond = len(second)
+        if(lFirst < lSecond):
+            minLen = lFirst
+        else:
+            minLen = lSecond
+        for i in range(minLen):
+            if(first[i].index > second[i].index):
+                return 1
+            if(first[i].index < second[i].index):
+                return -1
+        return 0
+    def listCostFac(list):
+        smallestIndex = len(list)-1
+        for i in range(len(list)-1,0,-1):
+            if(word.letterListCmp(list[smallestIndex:],list[i:]) > 0):
+                smallestIndex = i
+        return smallestIndex
     def noCommas(self):
         return ''.join(str(i) for i in self.string)
 class letterOrdering:
@@ -100,12 +119,13 @@ class letterOrdering:
         temp = self.order[self.iterIndex]
         self.iterIndex+=1
         return temp
-    def toList(self) -> np.ndarray:
-        lst = np.zeros(len(self.order),dtype=int)
+    def toLetterList(self) -> np.ndarray:
+        lst = np.zeros(len(self.order),dtype=object)
         for let in self.order:
-            lst[let.rootIndex] = let.index
+            lst[let.rootIndex] = let
         return lst
-
+    def toOrderedList(self) -> np.ndarray:
+        return np.array(self.order,dtype=object)
 class rootSystem:
     def eBracket(self, bracketWord:word):            
         (A,B) = self.costfac(bracketWord)
@@ -408,16 +428,17 @@ class rootSystem:
                 break
             arr.append(delta - i)
         arr.append(delta)
-    def __genAdjacencyDict(self):
+    def __genAdjacencyDict(self) -> dict:
         dict = {}
+        orderList = self.ordering.toOrderedList()
         for weight in self.baseWeights:
             adjacents = []
             for otherWeight in self.baseWeights:
-                if(sum(otherWeight) - sum(weight) == 1 and np.all(np.unique(otherWeight - weight) == [0,1])):
-                    adjacents.append(otherWeight)
+                if(sum(otherWeight) - sum(weight) == 1 and np.array_equal(np.unique(otherWeight - weight), [0,1])):
+                    adjacents.append(np.where((otherWeight - weight) == 1)[0][0])
             dict[weight.tobytes()] = np.array(adjacents,dtype=int)
         return dict
-    def getAdjDict(self,arr):
+    def getAdjDict(self,arr) -> np.array:
         if(type(arr) == list):
             arr = np.array(arr,dtype=int)
         return self.__adjDict[arr.tobytes()]
@@ -778,6 +799,54 @@ class rootSystem:
                         break
                 if(countEqual == width):
                     return width
+    def SLWordAlgo(self, weightsToAdd,start:list=[],excluded:set=set()):
+        weightsToAdd = np.array(weightsToAdd,dtype=int)
+        currentWeight = np.zeros(self.n+1,dtype=int)
+        wordArr = []
+        excluded = excluded.copy()
+        letterList = self.ordering.toLetterList()
+        if(len(start) == 0):
+            for i in self.ordering.toOrderedList():
+                if(weightsToAdd[i.rootIndex] != 0):
+                    if(weightsToAdd[i.rootIndex] != 1):
+                        raise ValueError("Algorithm only word if the smallest occurs once")
+                    wordArr.append(i)
+                    weightsToAdd[i.rootIndex] -= 1
+                    currentWeight[i.rootIndex] += 1
+                    break
+        for i in range(len(weightsToAdd)):
+            if(weightsToAdd[i] == 0):
+                excluded.add(i)
+        for i in start:
+            currentWeight[i.rootIndex] += 1  
+        adjLetters = self.getAdjDict(currentWeight)
+        potentialList = []
+        for i in adjLetters[::-1]:
+            if not i in excluded:
+                potentialList.append(i)
+        while(len(potentialList) != 0):
+            max = self.ordering[0]
+            for i in potentialList:
+                cur = letterList[i]
+                if(cur > max):
+                    max = cur
+            wordArr.append(max)
+            if(weightsToAdd[max.rootIndex] == 1):
+                excluded.add(max.rootIndex)
+            weightsToAdd[max.rootIndex] -= 1
+            currentWeight[max.rootIndex] += 1
+            adjLetters = self.getAdjDict(currentWeight)
+            potentialList = []
+            for i in adjLetters[::-1]:
+                if not i in excluded:
+                    potentialList.append(i)
+        if(sum(weightsToAdd) != 0):
+            cofacStart = word.listCostFac(wordArr)
+            if(cofacStart == len(wordArr)-1):
+                wordArr.extend(self.SLWordAlgo(weightsToAdd,start=wordArr[cofacStart:]))
+            else:
+                wordArr.extend(self.SLWordAlgo(weightsToAdd,start=wordArr[cofacStart:]))
+        return wordArr
 if(__name__ == "__main__"):
-    F4 = rootSystem([0,1,2,3,4],"F",10)
-    F4.parseToDeltaFormat(F4.__getWords(8*F4.delta + np.array([0,0,0,0,1]))[0])
+    C4 = rootSystem([0,1,2,3,4],"C",3)
+    C4.SLWordGeneratorAlgorithm([0,1,1,1,1])
