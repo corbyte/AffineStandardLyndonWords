@@ -486,11 +486,7 @@ class rootSystem:
             return (leftWord,rightWord)
         return (None,None)
     def __getWords(self, combination:np.array):
-        bytes = combination.tobytes()
-        if(not bytes in self.weightToWordDictionary):
-            return []
-        else:
-            return self.weightToWordDictionary[bytes]
+        return self.weightToWordDictionary.get(combination.tobytes(),[])
     def getWords(self, combination):
         return self.__getWords(np.array(combination, dtype=int))
     def getAffineWords(self,weight):
@@ -799,7 +795,7 @@ class rootSystem:
                         break
                 if(countEqual == width):
                     return width
-    def SLWordAlgo(self, weightsToAdd,start:list=[],excluded:set=set()):
+    def SLWordBaseAlgo(self, weightsToAdd,start:list=[],excluded:set=set()):
         weightsToAdd = np.array(weightsToAdd,dtype=int)
         currentWeight = np.zeros(self.n+1,dtype=int)
         wordArr = []
@@ -819,9 +815,11 @@ class rootSystem:
                 excluded.add(i)
         for i in start:
             currentWeight[i.rootIndex] += 1  
+        if(sum(currentWeight) + sum(weightsToAdd) > self.deltaHeight):
+            raise ValueError("Cannot calculate yet")
         adjLetters = self.getAdjDict(currentWeight)
         potentialList = []
-        for i in adjLetters[::-1]:
+        for i in adjLetters:
             if not i in excluded:
                 potentialList.append(i)
         while(len(potentialList) != 0):
@@ -837,16 +835,70 @@ class rootSystem:
             currentWeight[max.rootIndex] += 1
             adjLetters = self.getAdjDict(currentWeight)
             potentialList = []
-            for i in adjLetters[::-1]:
+            for i in adjLetters:
                 if not i in excluded:
                     potentialList.append(i)
-        if(sum(weightsToAdd) != 0):
-            cofacStart = word.listCostFac(wordArr)
-            if(cofacStart == len(wordArr)-1):
-                wordArr.extend(self.SLWordAlgo(weightsToAdd,start=wordArr[cofacStart:]))
-            else:
-                wordArr.extend(self.SLWordAlgo(weightsToAdd,start=wordArr[cofacStart:]))
         return wordArr
+    def SLWordAlgo(self,weightToGenerate):
+        weightToAdd = np.array(weightToGenerate,dtype=int)
+        currentWeights = []
+        currentWords = []
+        wordArr = []
+        excludedSets = []
+        letterList = self.ordering.toLetterList()
+        #Sets up the beginning of all of the words
+        for i in self.ordering:
+            if(weightToAdd[i.rootIndex] != 0):
+                if(weightToAdd[i.rootIndex] == 1):
+                    return self.SLWordBaseAlgo(weightToAdd)
+                weightStart = np.zeros(self.n+1,dtype=int)
+                weightStart[i.rootIndex]  = 1
+                for _ in range(weightToAdd[i.rootIndex]):
+                    currentWeights.append(np.array(weightStart,dtype=int))
+                    currentWords.append([letterList[i.rootIndex]])
+                    excludedSets.append(set())
+                weightToAdd[i.rootIndex] = 0
+                break
+        for i in range(len(weightToAdd)):
+            if(weightToAdd[i] == 0):
+                for s in excludedSets:
+                    s.add(i)
+        while True:
+            gts = [word.strictLetterListCmp(currentWords[0],i) for i in currentWords]
+            maximalSmallestWordIndex = 0
+            for i in range(1,len(gts)):
+                if(gts[i] < 0):
+                    break
+                maximalSmallestWordIndex = i
+            if(maximalSmallestWordIndex == 0):
+                wordArr.extend(currentWords[0])
+                app = self.SLWordBaseAlgo(weightToAdd,currentWords[0])
+                wordArr.extend(app)
+                for i in app:
+                    weightToAdd[i.rootIndex] -= 1
+                    if(weightToAdd[i.rootIndex] == 0):
+                        for s in excludedSets:
+                            s.add(i.rootIndex)
+                currentWords.pop(0)
+                currentWeights.pop(0)
+                excludedSets.pop(0)
+            if(len(currentWords) == 0):
+                return wordArr
+            for i in range(maximalSmallestWordIndex,-1,-1):
+                adjLetters = self.getAdjDict(currentWeights[i])
+                potentialList = []
+                for l in adjLetters:
+                    if not l in excludedSets[i]:
+                        potentialList.append(l)
+                if(len(potentialList) == 0):
+                    continue
+                maxLetter = self.ordering[max([letterList[j].index for j in potentialList])]
+                currentWeights[i][maxLetter.rootIndex] += 1
+                weightToAdd[maxLetter.rootIndex] -= 1
+                if(weightToAdd[maxLetter.rootIndex] == 0):
+                    for s in excludedSets:
+                        s.add(maxLetter.rootIndex)
+                currentWords[i].append(maxLetter)
 if(__name__ == "__main__"):
-    C4 = rootSystem([0,1,2,3,4],"C",3)
-    C4.SLWordGeneratorAlgorithm([0,1,1,1,1])
+    F4 = rootSystem([1,0,2,3,4],"F",3)
+    F4.SLWordAlgo([1,2,2,3,1])
