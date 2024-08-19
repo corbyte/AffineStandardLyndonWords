@@ -140,7 +140,7 @@ class rootSystem:
         else:
             return True
         weights = re.weights - (self.delta * re.weights[0])
-        return np.any(weights[1:]* (self.cartan_matrix @im.hs))
+        return np.dot(weights[1:] ,(self.cartan_matrix @im.hs)) != 0
     def hBracket(self,word:word):
         a = self.costfac(word)[0]
         if(a is None):
@@ -212,6 +212,7 @@ class rootSystem:
                 self.delta = rootSystem.TypeFDelta()
             elif(self.type == 'G'):
                 self.delta = rootSystem.TypeGDelta()
+            self.delta.flags.writeable = False
             self.deltaHeight = sum(self.delta)
             #Generates the words
             self.__genAffineRootSystem()
@@ -839,7 +840,7 @@ class rootSystem:
                 if not i in excluded:
                     potentialList.append(i)
         return wordArr
-    def SLWordAlgo(self,weightToGenerate):
+    def SLWordAlgo(self,weightToGenerate) -> list:
         weightToAdd = np.array(weightToGenerate,dtype=int)
         currentWeights = []
         currentWords = []
@@ -863,14 +864,15 @@ class rootSystem:
             if(weightToAdd[i] == 0):
                 for s in excludedSets:
                     s.add(i)
-        while True:
-            gts = [word.strictLetterListCmp(currentWords[0],i) for i in currentWords]
+        RepeatedFlag = False
+        while True:                
+            gts = [word.letterListCmp(currentWords[0],i) for i in currentWords]
             maximalSmallestWordIndex = 0
             for i in range(1,len(gts)):
                 if(gts[i] < 0):
                     break
                 maximalSmallestWordIndex = i
-            if(maximalSmallestWordIndex == 0):
+            if(maximalSmallestWordIndex == 0 or sum(weightToAdd) == 0 or RepeatedFlag):
                 wordArr.extend(currentWords[0])
                 app = self.SLWordBaseAlgo(weightToAdd,currentWords[0])
                 wordArr.extend(app)
@@ -882,8 +884,12 @@ class rootSystem:
                 currentWords.pop(0)
                 currentWeights.pop(0)
                 excludedSets.pop(0)
+                if(maximalSmallestWordIndex == 0):
+                    break
+                maximalSmallestWordIndex = min(maximalSmallestWordIndex,len(currentWords)-1)
             if(len(currentWords) == 0):
                 return wordArr
+            RepeatedFlag = True
             for i in range(maximalSmallestWordIndex,-1,-1):
                 adjLetters = self.getAdjDict(currentWeights[i])
                 potentialList = []
@@ -892,6 +898,7 @@ class rootSystem:
                         potentialList.append(l)
                 if(len(potentialList) == 0):
                     continue
+                RepeatedFlag = False
                 maxLetter = self.ordering[max([letterList[j].index for j in potentialList])]
                 currentWeights[i][maxLetter.rootIndex] += 1
                 weightToAdd[maxLetter.rootIndex] -= 1
@@ -899,6 +906,34 @@ class rootSystem:
                     for s in excludedSets:
                         s.add(maxLetter.rootIndex)
                 currentWords[i].append(maxLetter)
+        while (True):
+            if(len(currentWords) == 0):
+                return wordArr
+            wordArrWeights = np.zeros(self.n+1,dtype=int)
+            for i in wordArr:
+                wordArrWeights[i.rootIndex]+= 1
+            for i in range(len(currentWords)-1,-1,-1):
+                if(i == 0):
+                    remainingWeight = np.array(weightToAdd,dtype=int)
+                    for arr in currentWeights:
+                        remainingWeight += arr
+                    wordArr.extend(self.SLWordAlgo(remainingWeight))
+                    return wordArr
+                if(len(self.getWords(wordArrWeights + currentWeights[i])) > 0):
+                        app = self.SLWordBaseAlgo(weightToAdd,wordArr + currentWords[i])
+                        wordArr.extend(currentWords[i])
+                        wordArr.extend(app)
+                        for j in app:
+                            weightToAdd[j.rootIndex] -= 1
+                            if(weightToAdd[j.rootIndex] == 0):
+                                for s in excludedSets:
+                                    s.add(j.rootIndex)
+                        currentWords.pop(i)
+                        currentWeights.pop(i)
+                        excludedSets.pop(i)
+                        if(i == 0):
+                            return wordArr
+                        break
 if(__name__ == "__main__"):
-    F4 = rootSystem([1,0,2,3,4],"F",3)
-    F4.SLWordAlgo([1,2,2,3,1])
+    F4 = rootSystem([0,2,1,3,4],"F",1)
+    F4.SLWordAlgo([0, 2, 3, 4, 2])
