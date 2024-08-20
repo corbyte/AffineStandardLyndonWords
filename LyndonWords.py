@@ -802,12 +802,11 @@ class rootSystem:
         twoGreater = index2 > index1
         word1 = currentWords[index1][0]
         word2 = currentWords[index2][0]
-        newWeight = currentWords[index1][2] + currentWords[index2][2]
         if(rootSystem.__decrementList(currentWords,index1) and index1 < index2):
             index2 -= 1
         rootSystem.__decrementList(currentWords,index2)
         if(twoGreater):
-            newWord = word2 +word1
+            newWord = word2 + word1
         else:
             newWord = word1 + word2
         for i in range(len(currentWords)):
@@ -815,9 +814,9 @@ class rootSystem:
                 currentWords[i][1] += 1
                 return currentWords
             if(word.letterListCmp(currentWords[i][0],newWord) < 0):
-                currentWords.insert(i,[newWord,1,newWeight])
+                currentWords.insert(i,[newWord,1])
                 return currentWords
-        currentWords.append([newWord,1,newWeight])
+        currentWords.append([newWord,1])
         return currentWords
     def __decrementList(currentList, index) -> bool:
         if(currentList[index][1] == 1):
@@ -830,28 +829,38 @@ class rootSystem:
         if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
             return []
         currentWords = []
-        returnLetterList = []
+        returnWord = None
+        currentWeight = np.array(self.n+1,dtype=int)
+        weightsToGenerate = np.array(weightsToGenerate,dtype=int)
+        #currentWeight = np.zeros(self.n + 1, dtype=int)
         for i in range(len(self.ordering)-1,-1,-1):
             if(weightsToGenerate[self.ordering[i].rootIndex] > 0): 
                 arr = np.zeros(self.n+1,dtype=int)
                 arr[self.ordering[i].rootIndex] = 1 
-                currentWords.append([[self.ordering[i]],weightsToGenerate[self.ordering[i].rootIndex],arr])
+                currentWords.append([word([self.ordering[i]],arr),weightsToGenerate[self.ordering[i].rootIndex]])
         while True:
-            if(len(currentWords) and self.isImaginary(sum(currentWords[0][2]))):
-                returnLetterList.extend(currentWords[0][0])
+            if(len(currentWords) and self.isImaginary(sum(currentWords[0][0].weights))):
+                if(returnWord is None):
+                    returnWord = currentWords[0][0]
+                else:
+                    returnWord = returnWord + currentWords[0][0]
                 currentWords.pop(0)
             if(len(currentWords) == 0):
-                return returnLetterList
-            smallestWordWeight = currentWords[-1][2]
+                return returnWord
             for i in range(currentWords[-1][1]):
                 foundFlag = False
                 for possibleAppendInd in range(len(currentWords)):
-                    if(len(self.getWords(smallestWordWeight + currentWords[possibleAppendInd][2])) != 0):
+                    if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0
+                    #   and len(self.getWords(weightsToGenerate-currentWords[-1][0].weights - currentWords[possibleAppendInd][0].weights)) != 0
+                    ):
                         currentWords = rootSystem.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
                         foundFlag = True
                         break
                 if(not foundFlag):
-                    returnLetterList.extend(currentWords[-1][0])
+                    if(returnWord is None):
+                        returnWord = currentWords[-1][0]
+                    else:
+                        returnWord = returnWord + currentWords[-1][0]
                     rootSystem.__decrementList(currentWords,-1)
 if(__name__ == "__main__"):
     F4 = rootSystem([0,2,1,3,4],"F",1)
