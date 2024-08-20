@@ -805,22 +805,47 @@ class rootSystem:
             newWord = word2 + word1
         else:
             newWord = word1 + word2
-        for i in range(len(currentWords)):
-            if(word.letterListCmp(currentWords[i][0],newWord) == 0):
-                currentWords[i][1] += 1
-                return currentWords
-            if(word.letterListCmp(currentWords[i][0],newWord) < 0):
-                currentWords.insert(i,[newWord,1])
-                return currentWords
-        currentWords.append([newWord,1])
+        rootSystem.__addList(currentWords,newWord)
         return currentWords
-    def __decrementList(currentList, index) -> bool:
+    def __decrementList(currentList, index:int) -> bool:
         if(currentList[index][1] == 1):
             currentList.pop(index)
             return True
         else:
             currentList[index][1] -= 1
             return False
+    def __addToList(currentWords,w:word) -> bool:
+        for i in range(len(currentWords)):
+            if(word.letterListCmp(currentWords[i][0],w) == 0):
+                currentWords[i][1] += 1
+                return False
+            if(word.letterListCmp(currentWords[i][0],w) < 0):
+                currentWords.insert(i,[w,1])
+                return True
+        return False
+    def __nextSmallest(self,index,currentList):
+        currentWord = currentList[index][0].string
+        weight = currentList[index][0].weights
+        rootSystem.__decrementList(currentList,index)
+        letterWeight = np.zeros(self.n+1,dtype=int)
+        removedLetter = currentWord[-1]
+        letterWeight[removedLetter.rootIndex] = 1
+        rootSystem.__addList(currentList,word([removedLetter],letterWeight))
+        currentWord = currentWord[:-1]
+        while True:
+            flag = False
+            for i in range(len(currentList),index):
+                if(currentList[i][0] > removedLetter):
+                    continue
+                if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0
+                    #   and len(self.getWords(weightsToGenerate-currentWords[-1][0].weights - currentWords[possibleAppendInd][0].weights)) != 0
+                    ):
+                        currentWords = rootSystem.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
+                        foundFlag = True
+                        break
+            if(not flag):
+                break                                           
+        return currentList
     def SLWordAlgo(self,weightsToGenerate) -> list:
         if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
             return []
