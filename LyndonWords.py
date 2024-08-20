@@ -68,6 +68,8 @@ class word:
         else:
             minLen = lSecond
         for i in range(minLen):
+            if(type(first[i])is not letter or type(second[i]) is not letter):
+                raise ValueError("List contains non-letter object")
             if(first[i].index > second[i].index):
                 return 1
             if(first[i].index < second[i].index):
@@ -127,7 +129,9 @@ class letterOrdering:
     def toOrderedList(self) -> np.ndarray:
         return np.array(self.order,dtype=object)
 class rootSystem:
-    def eBracket(self, bracketWord:word):            
+    def eBracket(self, bracketWord:word):      
+        if(len(bracketWord) == 1):
+            return True      
         (A,B) = self.costfac(bracketWord)
         if(A is None):
             return False
@@ -151,7 +155,7 @@ class rootSystem:
             return -newA[1:]
         return newA[1:]
     def listHBracketing(self,letterList) -> bool:
-        letterlist = letterList.string[:word.listCostFac(letterList)]
+        letterlist = letterList[:word.listCostFac(letterList)]
         weights = self.letterListToWeights(letterlist)
         newA = (weights - (self.delta *weights[0]))
         if(np.any(newA < 0)):
@@ -159,8 +163,8 @@ class rootSystem:
         return newA[1:]
     def listEBracketing(self,letterList):
         costFacIndex = word.listCostFac(letterList)
-        A = letterList.string[costFacIndex:]
-        B = letterList.string[:costFacIndex]
+        A = letterList[:costFacIndex]
+        B = letterList[costFacIndex:]
         if(A is None):
             return False
         if(self.isImaginary(len(A))):
@@ -172,7 +176,8 @@ class rootSystem:
         else:
             return True
         hs = self.listHBracketing(im)
-        weights = re.weights - (self.delta * re.weights[0])
+        realWeights = self.letterListToWeights(re)
+        weights = realWeights - (self.delta * realWeights[0])
         return np.dot(weights[1:] ,(self.cartan_matrix @hs)) != 0
     def __init__(self, ordering,type:str):
         self.type = type.upper()
@@ -207,7 +212,6 @@ class rootSystem:
             self.baseWeights = rootSystem.getFWeights()
         elif(self.type == 'G'):
             self.baseWeights = rootSystem.getGWeights()
-        self.__adjDict = self.__genAdjacencyDict()
         self.numberOfBaseWeights = len(self.baseWeights)
         if(self.type == 'C' and self.n == 2):
             self.cartan_matrix = np.array([
@@ -831,21 +835,23 @@ class rootSystem:
             return False
     def __addToList(currentWords,w:word) -> bool:
         for i in range(len(currentWords)):
-            if(word.letterListCmp(currentWords[i][0],w) == 0):
+            if(currentWords[i][0] ==w):
                 currentWords[i][1] += 1
                 return False
-            if(word.letterListCmp(currentWords[i][0],w) < 0):
+            if(currentWords[i][0] < w):
                 currentWords.insert(i,[w,1])
                 return True
+        currentWords.append([w,1])
         return False
     def __nextSmallest(self,index,currentList,excluded:set = set()):
+        raise NotImplementedError()
         currentWord = currentList[index][0].string
         weight = currentList[index][0].weights
         rootSystem.__decrementList(currentList,index)
         letterWeight = np.zeros(self.n+1,dtype=int)
         removedLetter = currentWord[-1]
         letterWeight[removedLetter.rootIndex] = 1
-        rootSystem.__addList(currentList,word([removedLetter],letterWeight))
+        rootSystem.__addToList(currentList,word([removedLetter],letterWeight))
         currentWord = currentWord[:-1]
         while True:
             flag = False
@@ -866,7 +872,6 @@ class rootSystem:
             return []
         currentWords = []
         returnWord = None
-        currentWeight = np.array(self.n+1,dtype=int)
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
         #currentWeight = np.zeros(self.n + 1, dtype=int)
         for i in range(len(self.ordering)-1,-1,-1):
@@ -887,14 +892,14 @@ class rootSystem:
                         foundFlag = True
                         break
                 if(not foundFlag):
-                    if(word.listEBracketing(currentWords[-1][0],self)):
+                    #if(self.listEBracketing(currentWords[-1][0].string)):
                         if(returnWord is None):
                             returnWord = currentWords[-1][0]
                         else:
                             returnWord = returnWord + currentWords[-1][0]
                         rootSystem.__decrementList(currentWords,-1)
-                    else:
-                        self.__nextSmallest(len(currentWords-1),currentWords)
+                    #else:
+                    #    self.__nextSmallest(len(currentWords)-1,currentWords)
 if(__name__ == "__main__"):
     F4 = rootSystem([0,2,1,3,4],"F",1)
     F4.SLWordAlgo([0, 2, 3, 4, 2])
