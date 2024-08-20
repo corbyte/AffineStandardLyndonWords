@@ -150,16 +150,11 @@ class rootSystem:
         if(np.any(newA < 0)):
             return -newA[1:]
         return newA[1:]
-    def __init__(self, ordering,type:str,k:int=0):
+    def __init__(self, ordering,type:str):
         self.type = type.upper()
-        self.k = k
-        self.affine:bool = k != 0
         if( len(self.type) != 1 or self.type < 'A' or self.type > 'G' ):
             raise ValueError('Type is invalid')
-        if(self.affine):
-            self.n = len(ordering)-1
-        else:
-            self.n = len(ordering)
+        self.n = len(ordering)-1
         self.ordering:letterOrdering = letterOrdering(ordering)
         self.weightToWordDictionary:dict = {}
         self.minWord:word = None
@@ -190,43 +185,29 @@ class rootSystem:
             self.baseWeights = rootSystem.getGWeights()
         self.__adjDict = self.__genAdjacencyDict()
         self.numberOfBaseWeights = len(self.baseWeights)
-        if(self.affine):
-            if(self.type == 'C' and self.n == 2):
-                self.cartan_matrix = np.array([
-                    [2,-2],
-                    [-1,2]
-                ])
-            else:
-                self.cartan_matrix = rootSystem.getCartanMatrix(self.type,self.n)
-            if(self.type == 'A'):
-                self.delta = rootSystem.TypeADelta(self.n)
-            elif (self.type == 'B'):
-                self.delta = rootSystem.TypeBDelta(self.n) 
-            elif(self.type == 'C'):
-                self.delta = rootSystem.TypeCDelta(self.n)
-            elif(self.type == 'D'):
-                self.delta = rootSystem.TypeDDelta(self.n)
-            elif(self.type == 'E'):
-                self.delta = rootSystem.TypeEDelta(self.n)
-            elif(self.type == 'F'):
-                self.delta = rootSystem.TypeFDelta()
-            elif(self.type == 'G'):
-                self.delta = rootSystem.TypeGDelta()
-            self.delta.flags.writeable = False
-            self.deltaHeight = sum(self.delta)
-            #Generates the words
-            self.__genAffineRootSystem()
+        if(self.type == 'C' and self.n == 2):
+            self.cartan_matrix = np.array([
+                [2,-2],
+                [-1,2]
+            ])
         else:
-            self.__genFiniteRootSystem()
-    def __genFiniteRootSystem(self):
-        for i in self.baseWeights:
-            self.__genWord(i)
-    def __genAffineRootSystem(self):
-        currentWeights = np.array(self.baseWeights,dtype=int)
-        for _ in range(self.k+1):
-            for i in currentWeights:
-                self.__genWord(i)
-                i += self.delta
+            self.cartan_matrix = rootSystem.getCartanMatrix(self.type,self.n)
+        if(self.type == 'A'):
+            self.delta = rootSystem.TypeADelta(self.n)
+        elif (self.type == 'B'):
+            self.delta = rootSystem.TypeBDelta(self.n) 
+        elif(self.type == 'C'):
+            self.delta = rootSystem.TypeCDelta(self.n)
+        elif(self.type == 'D'):
+            self.delta = rootSystem.TypeDDelta(self.n)
+        elif(self.type == 'E'):
+            self.delta = rootSystem.TypeEDelta(self.n)
+        elif(self.type == 'F'):
+            self.delta = rootSystem.TypeFDelta()
+        elif(self.type == 'G'):
+            self.delta = rootSystem.TypeGDelta()
+        self.delta.flags.writeable = False
+        self.deltaHeight = sum(self.delta)
     def getAWeights(n):
         size = n + 1
         arr = []
@@ -489,10 +470,14 @@ class rootSystem:
     def __getWords(self, combination:np.array):
         return self.weightToWordDictionary.get(combination.tobytes(),[])
     def getWords(self, combination):
-        return self.__getWords(np.array(combination, dtype=int))
+        if(self.containsWeight(combination)):
+            ret = self.__getWords(np.array(combination, dtype=int))
+            if(len(ret) == 0):
+                self.generateUptoHeight(sum(combination))
+                ret = self.__getWords(np.array(combination, dtype=int))
+            return ret
+        return []
     def getAffineWords(self,weight):
-        if not self.affine:
-            raise ValueError('Cannot call getAffineWords on a simple Lie algebra')
         matches = []
         k=0
         newWord = self.__getWords(weight + k*self.delta)
@@ -502,7 +487,7 @@ class rootSystem:
             newWord=self.__getWords(weight + k*self.delta)
         return matches
     def isImaginary(self,height:int):
-        return (self.affine and height % self.deltaHeight == 0)
+        return height % self.deltaHeight == 0
     def __genWord(self, combinations:np.array):
         weight = sum(combinations)
         if(weight == 1):
@@ -539,11 +524,7 @@ class rootSystem:
                             (a,b) = (word1,word2)
                         else:
                             (a,b) = (word2,word1)
-                        if(not self.affine):
-                            if(word.letterListCmp(a.string, maxWord.string) < 0):
-                                continue
-                            maxWord = a+b
-                        if(self.affine and not imaginary):
+                        if(not imaginary):
                             #Checks to see if bracket is non-zero
                             newWord = a+b
                             if word.letterListCmp(newWord.string,maxWord.string) <= 0:
@@ -556,8 +537,7 @@ class rootSystem:
                                 continue
                             potentialOptions.append(a+b)
                             continue
-            if(self.affine):
-                kDelta+= self.delta
+            kDelta+= self.delta
         if not imaginary:
             maxWord.cofactorizationSplit = len(self.costfac(maxWord)[0])
             self.weightToWordDictionary[combinations.tobytes()] = [maxWord]
@@ -796,6 +776,22 @@ class rootSystem:
                         break
                 if(countEqual == width):
                     return width
+    def generateUptoHeight(self,height:int):
+        k=0
+        while True:
+            for base in self.baseWeights:
+                weight = base + k*self.delta
+                if(sum(weight) > height):
+                    return
+                if len(self.__getWords(weight)) == 0:
+                    self.__genWord(weight)
+            k += 1
+    def containsWeight(self,weights):
+        if(len(weights) != self.n+1):
+            return False
+        weights = np.array(weights,dtype=int)
+        weights -= ((sum(weights)-1)//self.deltaHeight) * self.delta
+        return np.any(np.all(self.baseWeights[:] == weights,axis=1))
     def __combineCurrentWords(currentWords,index1:int,index2:int) -> list:
         if(index1 < 0 or index2 < 0):
             raise ValueError("index 1 or 2 should be nonnegative numbers")
