@@ -95,7 +95,7 @@ class word:
         for i in range(len(list)-1,0,-1):
             if(word.letterListCmp(list[smallestIndex:],list[i:]) > 0):
                 smallestIndex = i
-        return smallestIndex
+        return smallestIndex        
     def noCommas(self):
         return ''.join(str(i) for i in self.string)
 class letterOrdering:
@@ -141,7 +141,7 @@ class rootSystem:
             return True
         weights = re.weights - (self.delta * re.weights[0])
         return np.dot(weights[1:] ,(self.cartan_matrix @im.hs)) != 0
-    def hBracket(self,word:word):
+    def hBracket(self,word:word) -> np.array:
         a = self.costfac(word)[0]
         if(a is None):
             return np.zeros(self.n,dtype=int)
@@ -150,6 +150,30 @@ class rootSystem:
         if(np.any(newA < 0)):
             return -newA[1:]
         return newA[1:]
+    def listHBracketing(self,letterList) -> bool:
+        letterlist = letterList.string[:word.listCostFac(letterList)]
+        weights = self.letterListToWeights(letterlist)
+        newA = (weights - (self.delta *weights[0]))
+        if(np.any(newA < 0)):
+            return -newA[1:]
+        return newA[1:]
+    def listEBracketing(self,letterList):
+        costFacIndex = word.listCostFac(letterList)
+        A = letterList.string[costFacIndex:]
+        B = letterList.string[:costFacIndex]
+        if(A is None):
+            return False
+        if(self.isImaginary(len(A))):
+            re = B
+            im = A
+        elif(self.isImaginary(len(B))):
+            re = A
+            im = B
+        else:
+            return True
+        hs = self.listHBracketing(im)
+        weights = re.weights - (self.delta * re.weights[0])
+        return np.dot(weights[1:] ,(self.cartan_matrix @hs)) != 0
     def __init__(self, ordering,type:str):
         self.type = type.upper()
         if( len(self.type) != 1 or self.type < 'A' or self.type > 'G' ):
@@ -410,20 +434,6 @@ class rootSystem:
                 break
             arr.append(delta - i)
         arr.append(delta)
-    def __genAdjacencyDict(self) -> dict:
-        dict = {}
-        orderList = self.ordering.toOrderedList()
-        for weight in self.baseWeights:
-            adjacents = []
-            for otherWeight in self.baseWeights:
-                if(sum(otherWeight) - sum(weight) == 1 and np.array_equal(np.unique(otherWeight - weight), [0,1])):
-                    adjacents.append(np.where((otherWeight - weight) == 1)[0][0])
-            dict[weight.tobytes()] = np.array(adjacents,dtype=int)
-        return dict
-    def getAdjDict(self,arr) -> np.array:
-        if(type(arr) == list):
-            arr = np.array(arr,dtype=int)
-        return self.__adjDict[arr.tobytes()]
     def costfac(self,wordToFactor:word):
         if(wordToFactor.height == 1):
             return (wordToFactor,None)
@@ -792,6 +802,11 @@ class rootSystem:
         weights = np.array(weights,dtype=int)
         weights -= ((sum(weights)-1)//self.deltaHeight) * self.delta
         return np.any(np.all(self.baseWeights[:] == weights,axis=1))
+    def letterListToWeights(self,letterList):
+        arr = np.zeros(self.n + 1,dtype=int)
+        for l in letterList:
+            arr[l.rootIndex] += 1
+        return arr
     def __combineCurrentWords(currentWords,index1:int,index2:int) -> list:
         if(index1 < 0 or index2 < 0):
             raise ValueError("index 1 or 2 should be nonnegative numbers")
@@ -805,7 +820,7 @@ class rootSystem:
             newWord = word2 + word1
         else:
             newWord = word1 + word2
-        rootSystem.__addList(currentWords,newWord)
+        rootSystem.__addToList(currentWords,newWord)
         return currentWords
     def __decrementList(currentList, index:int) -> bool:
         if(currentList[index][1] == 1):
@@ -823,7 +838,7 @@ class rootSystem:
                 currentWords.insert(i,[w,1])
                 return True
         return False
-    def __nextSmallest(self,index,currentList):
+    def __nextSmallest(self,index,currentList,excluded:set = set()):
         currentWord = currentList[index][0].string
         weight = currentList[index][0].weights
         rootSystem.__decrementList(currentList,index)
@@ -837,10 +852,10 @@ class rootSystem:
             for i in range(len(currentList),index):
                 if(currentList[i][0] > removedLetter):
                     continue
-                if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0
-                    #   and len(self.getWords(weightsToGenerate-currentWords[-1][0].weights - currentWords[possibleAppendInd][0].weights)) != 0
+                if(len(self.getWords(currentWords[-1][0].weights + currentWords[i][0].weights)) != 0
+                    and currentList[i][0] not in excluded
                     ):
-                        currentWords = rootSystem.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
+                        currentWords = rootSystem.__combineCurrentWords(currentWords,i,len(currentWords)-1)
                         foundFlag = True
                         break
             if(not flag):
@@ -861,28 +876,25 @@ class rootSystem:
                 currentWords.append([word([self.ordering[i]],arr),weightsToGenerate[self.ordering[i].rootIndex]])
         while True:
             if(len(currentWords) and self.isImaginary(sum(currentWords[0][0].weights))):
-                if(returnWord is None):
-                    returnWord = currentWords[0][0]
-                else:
-                    returnWord = returnWord + currentWords[0][0]
-                currentWords.pop(0)
+                self.__nextSmallest(0,currentWords)
             if(len(currentWords) == 0):
                 return returnWord
             for i in range(currentWords[-1][1]):
                 foundFlag = False
                 for possibleAppendInd in range(len(currentWords)):
-                    if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0
-                    #   and len(self.getWords(weightsToGenerate-currentWords[-1][0].weights - currentWords[possibleAppendInd][0].weights)) != 0
-                    ):
+                    if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0):
                         currentWords = rootSystem.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
                         foundFlag = True
                         break
                 if(not foundFlag):
-                    if(returnWord is None):
-                        returnWord = currentWords[-1][0]
+                    if(word.listEBracketing(currentWords[-1][0],self)):
+                        if(returnWord is None):
+                            returnWord = currentWords[-1][0]
+                        else:
+                            returnWord = returnWord + currentWords[-1][0]
+                        rootSystem.__decrementList(currentWords,-1)
                     else:
-                        returnWord = returnWord + currentWords[-1][0]
-                    rootSystem.__decrementList(currentWords,-1)
+                        self.__nextSmallest(len(currentWords-1),currentWords)
 if(__name__ == "__main__"):
     F4 = rootSystem([0,2,1,3,4],"F",1)
     F4.SLWordAlgo([0, 2, 3, 4, 2])
