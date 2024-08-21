@@ -811,48 +811,47 @@ class rootSystem:
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
-    def __combineCurrentWords(currentWords,index1:int,index2:int) -> list:
+    def __combineCurrentWords(self,currentWords,index1:int,index2:int) -> list:
         if(index1 < 0 or index2 < 0):
             raise ValueError("index 1 or 2 should be nonnegative numbers")
         twoGreater = index2 > index1
         word1 = currentWords[index1][0]
         word2 = currentWords[index2][0]
-        if(rootSystem.__decrementList(currentWords,index1) and index1 < index2):
+        if(self.__decrementList(currentWords,index1) and index1 < index2):
             index2 -= 1
-        rootSystem.__decrementList(currentWords,index2)
+        self.__decrementList(currentWords,index2)
         if(twoGreater):
             newWord = word2 + word1
         else:
             newWord = word1 + word2
-        rootSystem.__addToList(currentWords,newWord)
+        self.__addToList(currentWords,newWord)
         return currentWords
-    def __decrementList(currentList, index:int) -> bool:
+    def __decrementList(self,currentList, index:int) -> bool:
         if(currentList[index][1] == 1):
             currentList.pop(index)
             return True
         else:
             currentList[index][1] -= 1
             return False
-    def __addToList(currentWords,w:word) -> bool:
+    def __addToList(self,currentWords,w:word) -> bool:
         for i in range(len(currentWords)):
             if(currentWords[i][0] ==w):
                 currentWords[i][1] += 1
-                return False
+                return i
             if(currentWords[i][0] < w):
                 currentWords.insert(i,[w,1])
-                return True
+                return i
         currentWords.append([w,1])
-        return False
+        return len(currentWords)-1
     def __nextSmallest(self,index,currentList,excluded:set = set()):
-        raise NotImplementedError()
         currentWord = currentList[index][0].string
-        weight = currentList[index][0].weights
-        rootSystem.__decrementList(currentList,index)
+        self.__decrementList(currentList,index)
         letterWeight = np.zeros(self.n+1,dtype=int)
         removedLetter = currentWord[-1]
         letterWeight[removedLetter.rootIndex] = 1
-        rootSystem.__addToList(currentList,word([removedLetter],letterWeight))
+        self.__addToList(currentList,word([removedLetter],letterWeight))
         currentWord = currentWord[:-1]
+        newIndex = self.__addToList(currentList,word(currentWord,self.letterListToWeights(currentWord)))
         while True:
             flag = False
             for i in range(len(currentList),index):
@@ -861,24 +860,30 @@ class rootSystem:
                 if(len(self.getWords(currentWords[-1][0].weights + currentWords[i][0].weights)) != 0
                     and currentList[i][0] not in excluded
                     ):
-                        currentWords = rootSystem.__combineCurrentWords(currentWords,i,len(currentWords)-1)
-                        foundFlag = True
+                        currentWords = self.__combineCurrentWords(currentWords,i,len(currentWords)-1)
+                        flag = True
                         break
             if(not flag):
-                break                                           
+                self.__decrementList(currentList,newIndex)
+                remainingWeights = np.zeros(self.n+1,dtype=int)
+                for i in currentList:
+                    remainingWeights += currentList[i].weights * currentList[i][1]
+                tempCurrentList = currentList
+                self.__nextSmallest(newIndex,currentList)
+                break
         return currentList
-    def SLWordAlgo(self,weightsToGenerate) -> list:
+    def SLWordAlgo(self,weightsToGenerate,currentWords=[]) -> list:
         if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
             return []
-        currentWords = []
         returnWord = None
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
         #currentWeight = np.zeros(self.n + 1, dtype=int)
-        for i in range(len(self.ordering)-1,-1,-1):
-            if(weightsToGenerate[self.ordering[i].rootIndex] > 0): 
-                arr = np.zeros(self.n+1,dtype=int)
-                arr[self.ordering[i].rootIndex] = 1 
-                currentWords.append([word([self.ordering[i]],arr),weightsToGenerate[self.ordering[i].rootIndex]])
+        if(currentWords != []):
+            for i in range(len(self.ordering)-1,-1,-1):
+                if(weightsToGenerate[self.ordering[i].rootIndex] > 0): 
+                    arr = np.zeros(self.n+1,dtype=int)
+                    arr[self.ordering[i].rootIndex] = 1 
+                    currentWords.append([word([self.ordering[i]],arr),weightsToGenerate[self.ordering[i].rootIndex]])
         while True:
             if(len(currentWords) and self.isImaginary(sum(currentWords[0][0].weights))):
                 self.__nextSmallest(0,currentWords)
@@ -887,19 +892,27 @@ class rootSystem:
             for i in range(currentWords[-1][1]):
                 foundFlag = False
                 for possibleAppendInd in range(len(currentWords)):
-                    if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0):
-                        currentWords = rootSystem.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
+                    if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0
+                        and (not self.isImaginary(currentWords[-1][0].height) 
+                                or not np.dot(currentWords[possibleAppendInd][0].weights[1:],
+                                                self.cartan_matrix @ self.listHBracketing(currentWords[-1][0].string)) == 0 )):
+                        if(possibleAppendInd == len(currentWords) -1 and currentWords[-1][1] == 1):
+                            continue
+                        currentWords = self.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
                         foundFlag = True
                         break
                 if(not foundFlag):
-                    #if(self.listEBracketing(currentWords[-1][0].string)):
-                        if(returnWord is None):
-                            returnWord = currentWords[-1][0]
-                        else:
-                            returnWord = returnWord + currentWords[-1][0]
-                        rootSystem.__decrementList(currentWords,-1)
-                    #else:
-                    #    self.__nextSmallest(len(currentWords)-1,currentWords)
+                    if(returnWord is None):
+                        returnWord = currentWords[-1][0]
+                    else:
+                        if(self.isImaginary(returnWord.height) and
+                           np.dot(currentWords[-1][0].weights[1:],self.cartan_matrix @ self.listHBracketing(returnWord.string)) == 0):
+                            self.__addToList(currentWords,returnWord)
+                            returnWord = None
+                            self.__nextSmallest(len(currentWords)-1,currentWords)
+                            continue
+                        returnWord = returnWord + currentWords[-1][0]
+                    self.__decrementList(currentWords,-1)
 if(__name__ == "__main__"):
     F4 = rootSystem([0,2,1,3,4],"F",1)
     F4.SLWordAlgo([0, 2, 3, 4, 2])
