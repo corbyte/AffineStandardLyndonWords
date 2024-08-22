@@ -872,30 +872,31 @@ class rootSystem:
                 self.__nextSmallest(newIndex,currentList)
                 break
         return currentList
-    def SLWordAlgo(self,weightsToGenerate,currentWords=[]) -> list:
+    def SLWordAlgo(self,weightsToGenerate) -> list:
         if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
             return []
+        currentWords = []
         returnWord = None
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
         #currentWeight = np.zeros(self.n + 1, dtype=int)
-        if(currentWords != []):
-            for i in range(len(self.ordering)-1,-1,-1):
-                if(weightsToGenerate[self.ordering[i].rootIndex] > 0): 
-                    arr = np.zeros(self.n+1,dtype=int)
-                    arr[self.ordering[i].rootIndex] = 1 
-                    currentWords.append([word([self.ordering[i]],arr),weightsToGenerate[self.ordering[i].rootIndex]])
+        for i in range(len(self.ordering)-1,-1,-1):
+            if(weightsToGenerate[self.ordering[i].rootIndex] > 0): 
+                arr = np.zeros(self.n+1,dtype=int)
+                arr[self.ordering[i].rootIndex] = 1 
+                currentWords.append([word([self.ordering[i]],arr),weightsToGenerate[self.ordering[i].rootIndex]])
         while True:
-            if(len(currentWords) and self.isImaginary(sum(currentWords[0][0].weights))):
-                self.__nextSmallest(0,currentWords)
+            #if(len(currentWords) and self.isImaginary(sum(currentWords[0][0].weights))):
+            #    self.__nextSmallest(0,currentWords)
             if(len(currentWords) == 0):
                 return returnWord
             for i in range(currentWords[-1][1]):
                 foundFlag = False
                 for possibleAppendInd in range(len(currentWords)):
                     if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0
-                        and (not self.isImaginary(currentWords[-1][0].height) 
-                                or not np.dot(currentWords[possibleAppendInd][0].weights[1:],
-                                                self.cartan_matrix @ self.listHBracketing(currentWords[-1][0].string)) == 0 )):
+                        #and (not self.isImaginary(currentWords[-1][0].height) 
+                        #        or not np.dot(currentWords[possibleAppendInd][0].weights[1:],
+                        #                        self.cartan_matrix @ self.listHBracketing(currentWords[-1][0].string)) == 0 )):
+                    ):
                         if(possibleAppendInd == len(currentWords) -1 and currentWords[-1][1] == 1):
                             continue
                         currentWords = self.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
@@ -905,14 +906,51 @@ class rootSystem:
                     if(returnWord is None):
                         returnWord = currentWords[-1][0]
                     else:
-                        if(self.isImaginary(returnWord.height) and
-                           np.dot(currentWords[-1][0].weights[1:],self.cartan_matrix @ self.listHBracketing(returnWord.string)) == 0):
-                            self.__addToList(currentWords,returnWord)
-                            returnWord = None
-                            self.__nextSmallest(len(currentWords)-1,currentWords)
-                            continue
+                        #if(self.isImaginary(returnWord.height) and
+                        #   np.dot(currentWords[-1][0].weights[1:],self.cartan_matrix @ self.listHBracketing(returnWord.string)) == 0):
+                        #    self.__addToList(currentWords,returnWord)
+                        #    returnWord = None
+                        #    self.__nextSmallest(len(currentWords)-1,currentWords)
+                        #    continue
                         returnWord = returnWord + currentWords[-1][0]
                     self.__decrementList(currentWords,-1)
+    def SLWordAlgo2(self,weightsToGenerate):
+        weightsToGenerate = np.array(weightsToGenerate,dtype=int)
+        currentWords = []
+        for i in range(len(self.ordering)-1,-1,-1):
+            if(weightsToGenerate[self.ordering[i].rootIndex] > 0): 
+                arr = np.zeros(self.n+1,dtype=int)
+                arr[self.ordering[i].rootIndex] = 1 
+                currentWords.append([word([self.ordering[i]],arr),weightsToGenerate[self.ordering[i].rootIndex]])
+        if(len(currentWords) == 1):
+            return currentWords[0][0]
+        while True:
+            for i in range(currentWords[-1][1]):
+                for possibleAppendInd in range(len(currentWords)):
+                    if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0):
+                        if(possibleAppendInd == len(currentWords) -1 and currentWords[-1][1] == 1):
+                            continue
+                        currentWords = self.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
+                        break
+            if(len(currentWords) == 1):
+                return currentWords[0][0]
+            if currentWords[-1][1] == 1:
+                rightWeight = currentWords[-2][0].weights
+                remainingWeight = weightsToGenerate - currentWords[-2][0].weights
+                if(self.containsWeight(remainingWeight)):
+                    return self.SLWordAlgo2(remainingWeight) + self.SLWordAlgo2(currentWords[-2][0].weights)
+                k = 0
+                while np.all((k+1)*self.delta <= remainingWeight):
+                    k += 1
+                maxWeight = None
+                for w in self.baseWeights:
+                    adjW = w+k*self.delta
+                    comp = weightsToGenerate - adjW
+                    if(np.any(comp < rightWeight) or np.any(adjW < currentWords[-1][0].weights) or 
+                       not self.containsWeight(comp)):
+                        continue
+                    maxWeight = adjW
+                return self.SLWordAlgo2(maxWeight) + self.SLWordAlgo2(weightsToGenerate - maxWeight)
 if(__name__ == "__main__"):
     F4 = rootSystem([0,2,1,3,4],"F",1)
     F4.SLWordAlgo([0, 2, 3, 4, 2])
