@@ -873,11 +873,13 @@ class rootSystem:
                 break
         return currentList
     def SLWordAlgo(self,weightsToGenerate) -> list:
-        if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
-            return []
+        #if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
+        #    return []
         currentWords = []
         returnWord = None
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
+        availableCofac: bool = False
+        costfacWeight = np.zeros(self.n+1,dtype=int)
         #currentWeight = np.zeros(self.n + 1, dtype=int)
         for i in range(len(self.ordering)-1,-1,-1):
             if(weightsToGenerate[self.ordering[i].rootIndex] > 0): 
@@ -892,26 +894,27 @@ class rootSystem:
             for i in range(currentWords[-1][1]):
                 foundFlag = False
                 for possibleAppendInd in range(len(currentWords)):
-                    if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0
-                        #and (not self.isImaginary(currentWords[-1][0].height) 
-                        #        or not np.dot(currentWords[possibleAppendInd][0].weights[1:],
-                        #                        self.cartan_matrix @ self.listHBracketing(currentWords[-1][0].string)) == 0 )):
-                    ):
-                        if(possibleAppendInd == len(currentWords) -1 and currentWords[-1][1] == 1):
-                            continue
+                    if(self.containsWeight(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)):
+                        if(possibleAppendInd == len(currentWords)-2 and currentWords[-1][1] == 1):
+                            availableCofac = True
+                            costfacWeight = np.copy(currentWords[possibleAppendInd][0].weights)
+                        #availableCofac = False
                         currentWords = self.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
                         foundFlag = True
                         break
-                if(not foundFlag):
+                    if(availableCofac and self.containsWeight(costfacWeight + currentWords[possibleAppendInd][0].weights)
+                       and (possibleAppendInd < len(currentWords)-1 or currentWords[possibleAppendInd][1] > 1)):
+                        costfacWeight += currentWords[possibleAppendInd][0].weights
+                        currentWords = self.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
+                        foundFlag = True
+                        availableCofac = False
+                        break
+                if(len(currentWords) == 1 and currentWords[0][1] ==1):
+                    return currentWords[-1][0]
+                if(not foundFlag or (len(currentWords) == 1 and currentWords[0][1] == 1)):
                     if(returnWord is None):
                         returnWord = currentWords[-1][0]
                     else:
-                        #if(self.isImaginary(returnWord.height) and
-                        #   np.dot(currentWords[-1][0].weights[1:],self.cartan_matrix @ self.listHBracketing(returnWord.string)) == 0):
-                        #    self.__addToList(currentWords,returnWord)
-                        #    returnWord = None
-                        #    self.__nextSmallest(len(currentWords)-1,currentWords)
-                        #    continue
                         returnWord = returnWord + currentWords[-1][0]
                     self.__decrementList(currentWords,-1)
     def SLWordAlgo2(self,weightsToGenerate):
