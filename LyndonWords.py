@@ -47,7 +47,7 @@ class word:
                 return False
         return True
     def __lt__(self,other):
-        return word.letterListCmp(self.string,other.string) < 0
+        return word.letter_list_cmp(self.string,other.string) < 0
     def __le__(self,other):
         return (self < other) or (self == other)
     def __gt__(self, other):
@@ -60,7 +60,7 @@ class word:
         return not (self == other)
     def __add__(self,other):
         return word(np.concatenate((self.string,other.string),dtype=word),self.weights + other.weights) 
-    def letterListCmp(first,second):
+    def letter_list_cmp(first,second):
         lFirst = len(first)
         lSecond = len(second)
         if(lFirst < lSecond):
@@ -79,7 +79,7 @@ class word:
         if(lFirst > lSecond):
             return 1
         return 0
-    def strictLetterListCmp(first,second):
+    def strict_letter_list_cmp(first,second):
         lFirst = len(first)
         lSecond = len(second)
         if(lFirst < lSecond):
@@ -92,10 +92,10 @@ class word:
             if(first[i].index < second[i].index):
                 return -1
         return 0
-    def listCostFac(list):
+    def list_cost_fac(list):
         smallestIndex = len(list)-1
         for i in range(len(list)-1,0,-1):
-            if(word.letterListCmp(list[smallestIndex:],list[i:]) > 0):
+            if(word.letter_list_cmp(list[smallestIndex:],list[i:]) > 0):
                 smallestIndex = i
         return smallestIndex        
     def noCommas(self):
@@ -121,31 +121,31 @@ class letterOrdering:
         temp = self.order[self.iterIndex]
         self.iterIndex+=1
         return temp
-    def toLetterList(self) -> np.ndarray:
+    def to_letter_list(self) -> np.ndarray:
         lst = np.zeros(len(self.order),dtype=object)
         for let in self.order:
             lst[let.rootIndex] = let
         return lst
-    def toOrderedList(self) -> np.ndarray:
+    def to_ordered_list(self) -> np.ndarray:
         return np.array(self.order,dtype=object)
 class rootSystem:
-    def eBracket(self, bracketWord:word):      
+    def e_bracket(self, bracketWord:word):      
         if(len(bracketWord) == 1):
             return True      
         (A,B) = self.costfac(bracketWord)
         if(A is None):
             return False
-        if(self.isImaginary(A.height)):
+        if(self.is_imaginary(A.height)):
             re = B
             im = A
-        elif(self.isImaginary(B.height)):
+        elif(self.is_imaginary(B.height)):
             re = A
             im = B
         else:
             return True
         weights = re.weights - (self.delta * re.weights[0])
         return np.dot(weights[1:] ,(self.cartan_matrix @im.hs)) != 0
-    def hBracket(self,word:word) -> np.array:
+    def h_bracket(self,word:word) -> np.array:
         a = self.costfac(word)[0]
         if(a is None):
             return np.zeros(self.n,dtype=int)
@@ -154,29 +154,29 @@ class rootSystem:
         if(np.any(newA < 0)):
             return -newA[1:]
         return newA[1:]
-    def listHBracketing(self,letterList) -> bool:
-        letterlist = letterList[:word.listCostFac(letterList)]
-        weights = self.letterListToWeights(letterlist)
+    def list_h_bracketing(self,letterList) -> bool:
+        letterlist = letterList[:word.list_cost_fac(letterList)]
+        weights = self.letter_list_to_weights(letterlist)
         newA = (weights - (self.delta *weights[0]))
         if(np.any(newA < 0)):
             return -newA[1:]
         return newA[1:]
-    def listEBracketing(self,letterList):
-        costFacIndex = word.listCostFac(letterList)
+    def list_e_bracketing(self,letterList):
+        costFacIndex = word.list_cost_fac(letterList)
         A = letterList[:costFacIndex]
         B = letterList[costFacIndex:]
         if(A is None):
             return False
-        if(self.isImaginary(len(A))):
+        if(self.is_imaginary(len(A))):
             re = B
             im = A
-        elif(self.isImaginary(len(B))):
+        elif(self.is_imaginary(len(B))):
             re = A
             im = B
         else:
             return True
-        hs = self.listHBracketing(im)
-        realWeights = self.letterListToWeights(re)
+        hs = self.list_h_bracketing(im)
+        realWeights = self.letter_list_to_weights(re)
         weights = realWeights - (self.delta * realWeights[0])
         return np.dot(weights[1:] ,(self.cartan_matrix @hs)) != 0
     def __init__(self, ordering,type:str):
@@ -199,19 +199,19 @@ class rootSystem:
             i.cofactorizationSplit = 0
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
         if(self.type == 'A'):
-            self.baseWeights = rootSystem.getAWeights(self.n)
+            self.baseWeights = rootSystem.A_weights(self.n)
         elif(self.type == 'B'):
-            self.baseWeights = rootSystem.getBWeights(self.n)
+            self.baseWeights = rootSystem.B_weights(self.n)
         elif(self.type == 'C'):
-            self.baseWeights = rootSystem.getCWeights(self.n)
+            self.baseWeights = rootSystem.C_weights(self.n)
         elif(self.type =='D'):
-            self.baseWeights = rootSystem.getDWeights(self.n)
+            self.baseWeights = rootSystem.D_weights(self.n)
         elif(self.type == 'E'):
-            self.baseWeights = rootSystem.getEWeights(self.n)
+            self.baseWeights = rootSystem.E_weights(self.n)
         elif(self.type == 'F'):
-            self.baseWeights = rootSystem.getFWeights()
+            self.baseWeights = rootSystem.F_weights()
         elif(self.type == 'G'):
-            self.baseWeights = rootSystem.getGWeights()
+            self.baseWeights = rootSystem.G_weights()
         self.numberOfBaseWeights = len(self.baseWeights)
         if(self.type == 'C' and self.n == 2):
             self.cartan_matrix = np.array([
@@ -219,24 +219,24 @@ class rootSystem:
                 [-1,2]
             ])
         else:
-            self.cartan_matrix = rootSystem.getCartanMatrix(self.type,self.n)
+            self.cartan_matrix = rootSystem.get_cartan_matrix(self.type,self.n)
         if(self.type == 'A'):
-            self.delta = rootSystem.TypeADelta(self.n)
+            self.delta = rootSystem.A_delta(self.n)
         elif (self.type == 'B'):
-            self.delta = rootSystem.TypeBDelta(self.n) 
+            self.delta = rootSystem.B_delta(self.n) 
         elif(self.type == 'C'):
-            self.delta = rootSystem.TypeCDelta(self.n)
+            self.delta = rootSystem.C_delta(self.n)
         elif(self.type == 'D'):
-            self.delta = rootSystem.TypeDDelta(self.n)
+            self.delta = rootSystem.D_delta(self.n)
         elif(self.type == 'E'):
-            self.delta = rootSystem.TypeEDelta(self.n)
+            self.delta = rootSystem.E_delta(self.n)
         elif(self.type == 'F'):
-            self.delta = rootSystem.TypeFDelta()
+            self.delta = rootSystem.F_delta()
         elif(self.type == 'G'):
-            self.delta = rootSystem.TypeGDelta()
+            self.delta = rootSystem.G_delta()
         self.delta.flags.writeable = False
         self.deltaHeight = sum(self.delta)
-    def getAWeights(n):
+    def A_weights(n):
         size = n + 1
         arr = []
         for length in range(1,n+1):
@@ -245,10 +245,10 @@ class rootSystem:
                 for k in range(start,start+length):
                     comb[k+1] = 1
                 arr.append(comb)
-        rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeADelta(n))
+        rootSystem.__gen_affine_base_weights(arr,rootSystem.A_delta(n))
         arr.sort(key = sum)
         return np.array(arr) 
-    def getBWeights(n):
+    def B_weights(n):
         size = n+1
         arr = []
         for i in range(1,n+1):
@@ -286,10 +286,10 @@ class rootSystem:
                     comb[twoIndex+1] = 2
                     comb[oneIndex+1] = 0
                     oneIndex+=1
-        rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeBDelta(n))
+        rootSystem.__gen_affine_base_weights(arr,rootSystem.B_delta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def getCWeights(n):
+    def C_weights(n):
         size = n+1
         arr = []
         for i in range(n):
@@ -329,10 +329,10 @@ class rootSystem:
                 for k in range(n-2,n-2-length//2,-1):
                     comb[k+1] = 2
                 arr.append(comb)
-        rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeCDelta(n))
+        rootSystem.__gen_affine_base_weights(arr,rootSystem.C_delta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def getDWeights(n):
+    def D_weights(n):
         size = n+1
         arr = []
         for i in range(n):
@@ -370,10 +370,10 @@ class rootSystem:
                     comb[twoIndex+1] = 2
                     comb[oneIndex+1] = 0
                     oneIndex+=1
-        rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeDDelta(n))
+        rootSystem.__gen_affine_base_weights(arr,rootSystem.D_delta(n))
         arr.sort(key = sum)
         return arr
-    def getEWeights(n,affine:bool=True):
+    def E_weights(n,affine:bool=True):
         arr = []
         weights  = []
         if(n==6):
@@ -424,10 +424,10 @@ class rootSystem:
                 i = np.insert(i,0,0)
             arr.append(np.array(i,dtype=int))
         if(affine):
-            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeEDelta(n))
+            rootSystem.__gen_affine_base_weights(arr,rootSystem.E_delta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def getFWeights(affine:bool=True):
+    def F_weights(affine:bool=True):
         arr = []
         for i in [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[0,0,1,1],[0,1,1,1],
                   [0,1,2,2],[0,1,2,1],[1,1,1,1],[1,1,2,1],[1,2,2,1],[1,2,3,1],
@@ -437,20 +437,20 @@ class rootSystem:
                 i = np.insert(i,0,0)
             arr.append(np.array(i,dtype=int))
         if(affine):
-            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeFDelta())
+            rootSystem.__gen_affine_base_weights(arr,rootSystem.F_delta())
         arr.sort(key = sum)
         return np.array(arr)
-    def getGWeights(affine:bool=True)-> np.array:
+    def G_weights(affine:bool=True)-> np.array:
         arr = []
         for i in [[1,0],[0,1],[1,1],[1,2],[1,3],[2,3]]:
             if(affine):
                 i = np.insert(i,0,0)
             arr.append(np.array(i,dtype=int))
         if(affine):
-            rootSystem.__genAffineBaseWeights(arr,rootSystem.TypeGDelta())
+            rootSystem.__gen_affine_base_weights(arr,rootSystem.G_delta())
         arr.sort(key = sum)
         return np.array(arr)
-    def __genAffineBaseWeights(arr,delta:np.array):
+    def __gen_affine_base_weights(arr,delta:np.array):
         for i in arr:
             if(i[0] == 1):
                 break
@@ -471,7 +471,7 @@ class rootSystem:
             weight[wordToFactor.string[i-1].rootIndex] -= 1
             if(wordToFactor.string[i].index != splitLetter.index):
                 continue
-            rightWords = self.__getWords(weight)
+            rightWords = self.__get_words(weight)
             rightWord = None
             for rWord in rightWords:
                 flag = True
@@ -485,7 +485,7 @@ class rootSystem:
             if(rightWord is None):
                 continue
             leftWord = None
-            leftWords = self.__getWords(wordToFactor.weights-weight)    
+            leftWords = self.__get_words(wordToFactor.weights-weight)    
             for lWord in leftWords:
                 flag = True
                 for j in range(lWord.height):
@@ -499,32 +499,32 @@ class rootSystem:
                 continue
             return (leftWord,rightWord)
         return (None,None)
-    def __getWords(self, combination:np.array):
+    def __get_words(self, combination:np.array):
         return self.weightToWordDictionary.get(combination.tobytes(),[])
-    def getWords(self, combination):
-        if(self.containsWeight(combination)):
-            ret = self.__getWords(np.array(combination, dtype=int))
+    def get_words(self, combination):
+        if(self.contains_weight(combination)):
+            ret = self.__get_words(np.array(combination, dtype=int))
             if(len(ret) == 0):
-                self.generateUptoHeight(sum(combination))
-                ret = self.__getWords(np.array(combination, dtype=int))
+                self.generate_up_to_height(sum(combination))
+                ret = self.__get_words(np.array(combination, dtype=int))
             return ret
         return []
-    def getAffineWords(self,weight):
+    def get_affine_words(self,weight):
         matches = []
         k=0
-        newWord = self.__getWords(weight + k*self.delta)
+        newWord = self.__get_words(weight + k*self.delta)
         while len(newWord) > 0:
             matches.extend(newWord)
             k+=1
-            newWord=self.__getWords(weight + k*self.delta)
+            newWord=self.__get_words(weight + k*self.delta)
         return matches
-    def isImaginary(self,height:int):
+    def is_imaginary(self,height:int):
         return height % self.deltaHeight == 0
-    def __genWord(self, combinations:np.array):
+    def __gen_word(self, combinations:np.array):
         weight = sum(combinations)
         if(weight == 1):
             return
-        imaginary = self.isImaginary(weight)
+        imaginary = self.is_imaginary(weight)
         potentialOptions = []
         maxWord  = self.minWord
         validBase = np.repeat(True,self.numberOfBaseWeights)
@@ -541,15 +541,15 @@ class rootSystem:
                 if(iSum > lengthChecked):
                     break
                 j = combinations-i
-                words2 = self.__getWords(j)
+                words2 = self.__get_words(j)
                 if(len(words2) == 0):
                     validBase[baseWordIndex] = False
                     continue
                 lengthChecked = weight - iSum
-                eitherRootImaginary = (self.isImaginary(iSum) or self.isImaginary(weight-iSum))
+                eitherRootImaginary = (self.is_imaginary(iSum) or self.is_imaginary(weight-iSum))
                 if(imaginary and eitherRootImaginary):
                     continue
-                words1 = self.__getWords(i)
+                words1 = self.__get_words(i)
                 for word1 in words1:
                     for word2 in words2:
                         if(word1< word2):
@@ -559,13 +559,13 @@ class rootSystem:
                         if(not imaginary):
                             #Checks to see if bracket is non-zero
                             newWord = a+b
-                            if word.letterListCmp(newWord.string,maxWord.string) <= 0:
+                            if word.letter_list_cmp(newWord.string,maxWord.string) <= 0:
                                 continue
-                            if eitherRootImaginary and not self.eBracket(newWord):
+                            if eitherRootImaginary and not self.e_bracket(newWord):
                                 continue
                             maxWord = newWord
                         if(imaginary):
-                            if(a.height > 1 and word.letterListCmp(a.string[a.cofactorizationSplit:],b.string) < 0):
+                            if(a.height > 1 and word.letter_list_cmp(a.string[a.cofactorizationSplit:],b.string) < 0):
                                 continue
                             potentialOptions.append(a+b)
                             continue
@@ -580,22 +580,20 @@ class rootSystem:
             index = 0
             row = 0
             while(row < self.n):
-                potentialOptions[index].hs = self.hBracket(potentialOptions[index])
+                potentialOptions[index].hs = self.h_bracket(potentialOptions[index])
                 matrix[row] = potentialOptions[index].hs
                 if(np.linalg.matrix_rank(matrix) == row+1):
                     liPotentialOptions.append(potentialOptions[index])
                     row+=1
                 index += 1
             self.weightToWordDictionary[combinations.tobytes()] = liPotentialOptions
-    def getBaseWeights(self):
-        return np.array(self.baseWeights)
-    def getWordsByBase(self):
+    def get_words_by_base(self):
         returnarr = []
         for i in self.getBaseWeights():
-            returnarr.append(np.array(self.getAffineWords(i)))
+            returnarr.append(np.array(self.get_affine_words(i)))
         return np.array(returnarr)
-    def getMonotonicity(self, comb,deltaIndex = 0):
-        words = self.getAffineWords(comb)
+    def get_monotonicity(self, comb,deltaIndex = 0):
+        words = self.get_affine_words(comb)
         for j in range(1,len(words)):
             monotonicity = 0
             if(words[j-1] < words[j]):
@@ -609,106 +607,100 @@ class rootSystem:
                     break
                 monotonicity = -1
         return monotonicity
-    def checkMonotonicity(self, filter:{'All', 'Increasing', 'Decreasing','None'}="All"):
+    def check_monotonicity(self, filter:{'All', 'Increasing', 'Decreasing','None'}="All"):
         returnarr = []
         for i in self.getBaseWeights()[:-1]:
-            monotonicity = self.getMonotonicity(i)
+            monotonicity = self.get_monotonicity(i)
             if(filter == 'None' and monotonicity != 0):
                 continue
             if(filter == 'Increasing' and monotonicity != 1):
                 continue
             if(filter == 'Decreasing' and monotonicity != -1):
                 continue
-            returnarr.append((self.__getWords(i)[0].weights,monotonicity))
+            returnarr.append((self.__get_words(i)[0].weights,monotonicity))
         return np.array(returnarr, dtype=object)
-    def checkConvexity(self):
+    def check_convexity(self):
         exceptions = []
         wordsByLength = sorted(list(self.weightToWordDictionary.values()),key=lambda x:x[0].height)
         for wordIndex in range(1,len(wordsByLength)):
             for sumWord in wordsByLength[wordIndex]:
                 for alphaWords in wordsByLength[:wordIndex]:
                     for alphaWord in alphaWords:
-                        for betaWord in self.__getWords(sumWord.weights - alphaWord.weights):
+                        for betaWord in self.__get_words(sumWord.weights - alphaWord.weights):
                             if( betaWord<sumWord == alphaWord < sumWord):
                                 exceptions.append((betaWord,alphaWord))
         return exceptions
-    def getDecompositions(self,weights):
+    def get_decompositions(self,weights):
         if(weights is not np.array):
             weights = np.array(weights)
         returnarr = []
         delta = 0
         while(delta*self.deltaHeight< sum(weights)):
             for i in self.baseWeights:
-                if len(self.__getWords(weights-i - delta*self.delta)) > 0:
+                if len(self.__get_words(weights-i - delta*self.delta)) > 0:
                     returnarr.append((i,weights-i-delta*self.delta))
             delta+= 1 
         return returnarr
-    def getPotentialWords(self,weights):
-        decomps = self.getDecompositions(weights)
+    def get_potential_words(self,weights):
+        decomps = self.get_decompositions(weights)
         arr =[]
         for i in decomps:
-            for j in self.__getWords(i[0]):
-                for k in self.__getWords(i[1]):
+            for j in self.__get_words(i[0]):
+                for k in self.__get_words(i[1]):
                     if(j < k):
                         arr.append(j+k)
                     else:
                         arr.append(k+j)
         return arr
-    def TypeADelta(n:int):
+    def A_delta(n:int):
         return np.ones(n+1,dtype=int)
-    def TypeBDelta(n:int):
+    def B_delta(n:int):
         arr = np.repeat(2,n+1)
         arr[0] = 1
         arr[1] = 1
         return arr
-    def TypeCDelta(n:int):
+    def C_delta(n:int):
         delta = np.repeat(2,n+1)
         delta[0] = 1
         delta[-1] = 1
         return delta
-    def TypeDDelta(n:int):
+    def D_delta(n:int):
         delta = np.repeat(2,n+1)
         delta[0] =1
         delta[-1] = 1
         delta[-2] = 1
         delta[1] = 1
         return delta
-    def TypeEDelta(n:int):
+    def E_delta(n:int):
         if(n == 6):
             return np.array([1,1,2,3,2,1,2],dtype=int)
         if(n == 7):
             return np.array([1,1,2,3,4,3,2,2],dtype=int)
         if(n == 8):
             return np.array([1,2,3,4,5,6,4,2,3])
-    def TypeFDelta():
+    def F_delta():
         return np.array([1,2,3,4,2],dtype=int)
-    def TypeGDelta():
+    def G_delta():
         return np.array([1,2,3],dtype=int)
-    def printFormat(words, formatfunc):
+    def print_format(words, formatfunc):
         for word in words:
             print(formatfunc(word))
-    def deltaFormat(self,word):
-        if(word is None):
-            return "None"
-        deltaWeight = word.height//self.deltaHeight
-        base = word.weights - deltaWeight*self.delta
-        return f"{base} + {deltaWeight}d"
-    def SLDeltaFormat(self,word):
+    def delta_format(self,word):
         retstr = word.noCommas()
-        deltaWords = self.__getWords(self.delta)
+        deltaWords = self.__get_words(self.delta)
         for i in range(len(deltaWords)):
             retstr = retstr.replace(deltaWords[i].noCommas(),f"SL_{{{i+1}}}(d)")
         return retstr
-    def parseToDeltaFormat(self,parseWord:word):
+    def parse_to_delta_format(self,parseWord:word):
         retarr = []
-        deltaWords = self.__getWords(self.delta)
+        deltaWords = self.__get_words(self.delta)
         stack = []
         for letter in parseWord.string:
             stack.append(letter)
             if(len(stack) >= self.deltaHeight):
                 for i in range(len(deltaWords)):
                     deltaWord = deltaWords[i]
-                    if(word.letterListCmp(deltaWord.string,stack[-self.deltaHeight:]) == 0):
+                    if(word.letter_list_cmp(deltaWord.string,stack[-self.deltaHeight:]) == 0):
                         string = ""
                         for stackLetter in stack[:-self.deltaHeight]:
                             string+=str(stackLetter)
@@ -726,7 +718,7 @@ class rootSystem:
         if(len(string) > 0): 
             retarr.append(string)
         return retarr
-    def getCartanMatrix(type:str,n:int):
+    def get_cartan_matrix(type:str,n:int):
         if(n <= 0):
             raise ValueError("Invalid Parameters")
         type=type.upper()
@@ -781,21 +773,22 @@ class rootSystem:
             if(n == 2):
                 return np.array([[2,-3],[-1,2]], dtype=int)
         raise ValueError("Invalid parameters")
-    def getPeriodicity(self, simpleRoot,slIndex:int = 0) -> int:
+    #FIXME: update to account for new way words are generated
+    def get_periodicity(self, simpleRoot,slIndex:int = 0) -> int:
         factors = []
-        for i in self.getAffineWords(simpleRoot):
+        for i in self.get_affine_words(simpleRoot):
             tempArr = []
             for k in self.costfac(i):
                 if(k is None):
                     tempArr.append([np.zeros(len(i),dtype=int),0])
                 else:
                     imaginaryIndex=0
-                    if(self.isImaginary(k.height)):
+                    if(self.is_imaginary(k.height)):
                         imaginaryIndex = slIndex+1
                     tempArr.append([k.weights - (k.height//self.deltaHeight)*self.delta,k.height//self.deltaHeight,imaginaryIndex])
             factors.append(tempArr)
         repeat = 1
-        if(self.isImaginary(sum(simpleRoot))):
+        if(self.is_imaginary(sum(simpleRoot))):
             repeat = self.n
         strings = factors[slIndex::repeat]
         for width in range(1,len(strings)//2):
@@ -810,50 +803,52 @@ class rootSystem:
                         break
                 if(countEqual == width):
                     return width
-    def generateUptoHeight(self,height:int):
+    def generate_up_to_height(self,height:int):
         k=0
         while True:
             for base in self.baseWeights:
                 weight = base + k*self.delta
                 if(sum(weight) > height):
                     return
-                if len(self.__getWords(weight)) == 0:
-                    self.__genWord(weight)
+                if len(self.__get_words(weight)) == 0:
+                    self.__gen_word(weight)
             k += 1
-    def containsWeight(self,weights):
+    def generate_up_to_delta(self,k:int):
+        self.generate_up_to_height(self.deltaHeight*k)
+    def contains_weight(self,weights):
         if(len(weights) != self.n+1):
             return False
         weights = np.array(weights,dtype=int)
         weights -= ((sum(weights)-1)//self.deltaHeight) * self.delta
         return np.any(np.all(self.baseWeights[:] == weights,axis=1))
-    def letterListToWeights(self,letterList):
+    def letter_list_to_weights(self,letterList):
         arr = np.zeros(self.n + 1,dtype=int)
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
-    def __combineCurrentWords(self,currentWords,index1:int,index2:int) -> list:
+    def __combine_current_words(self,currentWords,index1:int,index2:int) -> list:
         if(index1 < 0 or index2 < 0):
             raise ValueError("index 1 or 2 should be nonnegative numbers")
         twoGreater = index2 > index1
         word1 = currentWords[index1][0]
         word2 = currentWords[index2][0]
-        if(self.__decrementList(currentWords,index1) and index1 < index2):
+        if(self.__decrement_list(currentWords,index1) and index1 < index2):
             index2 -= 1
-        self.__decrementList(currentWords,index2)
+        self.__decrement_list(currentWords,index2)
         if(twoGreater):
             newWord = word2 + word1
         else:
             newWord = word1 + word2
-        self.__addToList(currentWords,newWord)
+        self.__add_to_list(currentWords,newWord)
         return currentWords
-    def __decrementList(self,currentList, index:int) -> bool:
+    def __decrement_list(self,currentList, index:int) -> bool:
         if(currentList[index][1] == 1):
             currentList.pop(index)
             return True
         else:
             currentList[index][1] -= 1
             return False
-    def __addToList(self,currentWords,w:word) -> bool:
+    def __add_to_list(self,currentWords,w:word) -> bool:
         for i in range(len(currentWords)):
             if(currentWords[i][0] ==w):
                 currentWords[i][1] += 1
@@ -863,36 +858,36 @@ class rootSystem:
                 return i
         currentWords.append([w,1])
         return len(currentWords)-1
-    def __nextSmallest(self,index,currentList,excluded:set = set()):
+    def __next_smallest(self,index,currentList,excluded:set = set()):
         currentWord = currentList[index][0].string
-        self.__decrementList(currentList,index)
+        self.__decrement_list(currentList,index)
         letterWeight = np.zeros(self.n+1,dtype=int)
         removedLetter = currentWord[-1]
         letterWeight[removedLetter.rootIndex] = 1
-        self.__addToList(currentList,word([removedLetter],letterWeight))
+        self.__add_to_list(currentList,word([removedLetter],letterWeight))
         currentWord = currentWord[:-1]
-        newIndex = self.__addToList(currentList,word(currentWord,self.letterListToWeights(currentWord)))
+        newIndex = self.__add_to_list(currentList,word(currentWord,self.letter_list_to_weights(currentWord)))
         while True:
             flag = False
             for i in range(len(currentList),index):
                 if(currentList[i][0] > removedLetter):
                     continue
-                if(len(self.getWords(currentWords[-1][0].weights + currentWords[i][0].weights)) != 0
+                if(len(self.get_words(currentWords[-1][0].weights + currentWords[i][0].weights)) != 0
                     and currentList[i][0] not in excluded
                     ):
-                        currentWords = self.__combineCurrentWords(currentWords,i,len(currentWords)-1)
+                        currentWords = self.__combine_current_words(currentWords,i,len(currentWords)-1)
                         flag = True
                         break
             if(not flag):
-                self.__decrementList(currentList,newIndex)
+                self.__decrement_list(currentList,newIndex)
                 remainingWeights = np.zeros(self.n+1,dtype=int)
                 for i in currentList:
                     remainingWeights += currentList[i].weights * currentList[i][1]
                 tempCurrentList = currentList
-                self.__nextSmallest(newIndex,currentList)
+                self.__next_smallest(newIndex,currentList)
                 break
         return currentList
-    def SLWordAlgo(self,weightsToGenerate) -> list:
+    def SL_word_algo(self,weightsToGenerate) -> list:
         #if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
         #    return []
         currentWords = []
@@ -914,30 +909,30 @@ class rootSystem:
             for i in range(currentWords[-1][1]):
                 foundFlag = False
                 for possibleAppendInd in range(len(currentWords)):
-                    if(self.containsWeight(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)):
+                    if(self.contains_weight(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)):
                         if(possibleAppendInd == len(currentWords)-2 and currentWords[-1][1] == 1):
                             availableCofac = True
                             costfacWeight = np.copy(currentWords[possibleAppendInd][0].weights)
                         #availableCofac = False
-                        currentWords = self.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
+                        currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
                         foundFlag = True
                         break
-                    if(availableCofac and self.containsWeight(costfacWeight + currentWords[possibleAppendInd][0].weights)
+                    if(availableCofac and self.contains_weight(costfacWeight + currentWords[possibleAppendInd][0].weights)
                        and (possibleAppendInd < len(currentWords)-1 or currentWords[possibleAppendInd][1] > 1)):
                         costfacWeight += currentWords[possibleAppendInd][0].weights
-                        currentWords = self.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
+                        currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
                         foundFlag = True
                         availableCofac = False
                         break
-                if(len(currentWords) == 1 and currentWords[0][1] ==1):
-                    return currentWords[-1][0]
+                #if(len(currentWords) == 1 and currentWords[0][1] ==1):
+                #    return currentWords[-1][0]
                 if(not foundFlag or (len(currentWords) == 1 and currentWords[0][1] == 1)):
                     if(returnWord is None):
                         returnWord = currentWords[-1][0]
                     else:
                         returnWord = returnWord + currentWords[-1][0]
-                    self.__decrementList(currentWords,-1)
-    def SLWordAlgo2(self,weightsToGenerate):
+                    self.__decrement_list(currentWords,-1)
+    def SL_word_algo_2(self,weightsToGenerate):
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
         currentWords = []
         for i in range(len(self.ordering)-1,-1,-1):
@@ -950,18 +945,18 @@ class rootSystem:
         while True:
             for i in range(currentWords[-1][1]):
                 for possibleAppendInd in range(len(currentWords)):
-                    if(len(self.getWords(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0):
+                    if(len(self.get_words(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)) != 0):
                         if(possibleAppendInd == len(currentWords) -1 and currentWords[-1][1] == 1):
                             continue
-                        currentWords = self.__combineCurrentWords(currentWords,possibleAppendInd,len(currentWords)-1)
+                        currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
                         break
             if(len(currentWords) == 1):
                 return currentWords[0][0]
             if currentWords[-1][1] == 1:
                 rightWeight = currentWords[-2][0].weights
                 remainingWeight = weightsToGenerate - currentWords[-2][0].weights
-                if(self.containsWeight(remainingWeight)):
-                    return self.SLWordAlgo2(remainingWeight) + self.SLWordAlgo2(currentWords[-2][0].weights)
+                if(self.contains_weight(remainingWeight)):
+                    return self.SL_word_algo_2(remainingWeight) + self.SL_word_algo_2(currentWords[-2][0].weights)
                 k = 0
                 while np.all((k+1)*self.delta <= remainingWeight):
                     k += 1
@@ -970,10 +965,10 @@ class rootSystem:
                     adjW = w+k*self.delta
                     comp = weightsToGenerate - adjW
                     if(np.any(comp < rightWeight) or np.any(adjW < currentWords[-1][0].weights) or 
-                       not self.containsWeight(comp)):
+                       not self.contains_weight(comp)):
                         continue
                     maxWeight = adjW
-                return self.SLWordAlgo2(maxWeight) + self.SLWordAlgo2(weightsToGenerate - maxWeight)
+                return self.SL_word_algo_2(maxWeight) + self.SL_word_algo_2(weightsToGenerate - maxWeight)
 if(__name__ == "__main__"):
     F4 = rootSystem([0,2,1,3,4],"F",1)
-    F4.SLWordAlgo([0, 2, 3, 4, 2])
+    F4.SL_word_algo([0, 2, 3, 4, 2])
