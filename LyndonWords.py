@@ -901,37 +901,30 @@ class rootSystem:
                 arr = np.zeros(self.n+1,dtype=int)
                 arr[self.ordering[i].rootIndex] = 1 
                 currentWords.append([word([self.ordering[i]],arr),weightsToGenerate[self.ordering[i].rootIndex]])
-        while True:
             #if(len(currentWords) and self.isImaginary(sum(currentWords[0][0].weights))):
             #    self.__nextSmallest(0,currentWords)
-            if(len(currentWords) == 0):
-                return returnWord
-            for i in range(currentWords[-1][1]):
-                foundFlag = False
-                for possibleAppendInd in range(len(currentWords)):
-                    if(self.contains_weight(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)):
-                        if(possibleAppendInd == len(currentWords)-2 and currentWords[-1][1] == 1):
-                            availableCofac = True
-                            costfacWeight = np.copy(currentWords[possibleAppendInd][0].weights)
-                        #availableCofac = False
-                        currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
-                        foundFlag = True
-                        break
-                    if(availableCofac and self.contains_weight(costfacWeight + currentWords[possibleAppendInd][0].weights)
-                       and (possibleAppendInd < len(currentWords)-1 or currentWords[possibleAppendInd][1] > 1)):
-                        costfacWeight += currentWords[possibleAppendInd][0].weights
-                        currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
-                        foundFlag = True
-                        availableCofac = False
-                        break
-                #if(len(currentWords) == 1 and currentWords[0][1] ==1):
-                #    return currentWords[-1][0]
-                if(not foundFlag or (len(currentWords) == 1 and currentWords[0][1] == 1)):
-                    if(returnWord is None):
-                        returnWord = currentWords[-1][0]
-                    else:
-                        returnWord = returnWord + currentWords[-1][0]
-                    self.__decrement_list(currentWords,-1)
+        while(len(currentWords) != 0):
+            foundFlag = False
+            for possibleAppendInd in range(len(currentWords)):
+                if(possibleAppendInd == len(currentWords)-1 and currentWords[-1][1] == 1):
+                    continue
+                if(self.contains_weight(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)):
+                    currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
+                    foundFlag = True
+                    break
+                if(currentWords[-1][0].height >= self.deltaHeight and 
+                    self.contains_weight(self.letter_list_to_weights(currentWords[-1][0].string[word.list_cost_fac(currentWords[-1][0].string):]) 
+                                        + currentWords[possibleAppendInd][0].weights)):
+                    currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
+                    foundFlag = True
+                    break
+            if(not foundFlag or (len(currentWords) == 1 and currentWords[0][1] == 1)):
+                if(returnWord is None):
+                    returnWord = currentWords[-1][0]
+                else:
+                    returnWord = returnWord + currentWords[-1][0]
+                self.__decrement_list(currentWords,-1)
+        return returnWord
     def SL_word_algo_2(self,weightsToGenerate):
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
         currentWords = []
