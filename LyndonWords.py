@@ -774,35 +774,45 @@ class rootSystem:
                 return np.array([[2,-3],[-1,2]], dtype=int)
         raise ValueError("Invalid parameters")
     #FIXME: update to account for new way words are generated
-    def get_periodicity(self, simpleRoot,slIndex:int = 0) -> int:
+    def get_periodicity(self, simpleRoot,slIndex:int = 0,kdelta:int = 3) -> int:
         factors = []
+        self.generate_up_to_delta(kdelta)
         for i in self.get_affine_words(simpleRoot):
             tempArr = []
             for k in self.costfac(i):
                 if(k is None):
                     tempArr.append([np.zeros(len(i),dtype=int),0])
                 else:
-                    imaginaryIndex=0
-                    if(self.is_imaginary(k.height)):
-                        imaginaryIndex = slIndex+1
-                    tempArr.append([k.weights - (k.height//self.deltaHeight)*self.delta,k.height//self.deltaHeight,imaginaryIndex])
+                    tempArr.append([k.weights - (k.height//self.deltaHeight)*self.delta,k.height//self.deltaHeight])
             factors.append(tempArr)
         repeat = 1
         if(self.is_imaginary(sum(simpleRoot))):
             repeat = self.n
         strings = factors[slIndex::repeat]
-        for width in range(1,len(strings)//2):
-            for windowStart in range(1,(len(strings)-2*width)):
-                countEqual = 0
-                for i in range(width):
-                    arr1 = np.array([strings[windowStart+i + width*j][0][0] for j in range((len(strings)-(windowStart+i))//width)])
-                    arr2 = np.array([strings[windowStart+i + width*j][1][0] for j in range((len(strings)-(windowStart+i))//width)])
-                    if (arr1 == arr1[0]).all() and (arr2 == arr2[0]).all():
-                        countEqual+= 1
+        while True:
+            for width in range(1,len(strings)//2):
+                for windowStart in range(1,(len(strings)-2*width)):
+                    countEqual = 0
+                    for i in range(width):
+                        arr1 = np.array([strings[windowStart+i + width*j][0][0] for j in range((len(strings)-(windowStart+i))//width)])
+                        arr2 = np.array([strings[windowStart+i + width*j][1][0] for j in range((len(strings)-(windowStart+i))//width)])
+                        if (arr1 == arr1[0]).all() and (arr2 == arr2[0]).all():
+                            countEqual+= 1
+                        else:
+                            break
+                    if(countEqual == width):
+                        return width
+            added = 4
+            for i in range(added):
+                kdelta+=1
+                w = self.get_words(simpleRoot + self.delta*kdelta)[slIndex]
+                tempArr = []
+                for k in self.costfac(w):
+                    if(k is None):
+                        tempArr.append([np.zeros(len(i),dtype=int),0])
                     else:
-                        break
-                if(countEqual == width):
-                    return width
+                        tempArr.append([k.weights - (k.height//self.deltaHeight)*self.delta,k.height//self.deltaHeight])
+                strings.append(tempArr)
     def generate_up_to_height(self,height:int):
         k=0
         while True:
