@@ -98,7 +98,7 @@ class word:
             if(word.letter_list_cmp(list[smallestIndex:],list[i:]) > 0):
                 smallestIndex = i
         return smallestIndex        
-    def noCommas(self):
+    def no_commas(self):
         return ''.join(str(i) for i in self.string)
 class letterOrdering:
     def __init__(self, letterOrdering):
@@ -135,10 +135,10 @@ class rootSystem:
         (A,B) = self.costfac(bracketWord)
         if(A is None):
             return False
-        if(self.is_imaginary(A.height)):
+        if(self.is_imaginary_height(A.height)):
             re = B
             im = A
-        elif(self.is_imaginary(B.height)):
+        elif(self.is_imaginary_height(B.height)):
             re = A
             im = B
         else:
@@ -167,10 +167,10 @@ class rootSystem:
         B = letterList[costFacIndex:]
         if(A is None):
             return False
-        if(self.is_imaginary(len(A))):
+        if(self.is_imaginary_height(len(A))):
             re = B
             im = A
-        elif(self.is_imaginary(len(B))):
+        elif(self.is_imaginary_height(len(B))):
             re = A
             im = B
         else:
@@ -518,13 +518,13 @@ class rootSystem:
             k+=1
             newWord=self.__get_words(weight + k*self.delta)
         return matches
-    def is_imaginary(self,height:int):
+    def is_imaginary_height(self,height:int):
         return height % self.deltaHeight == 0
     def __gen_word(self, combinations:np.array):
         weight = sum(combinations)
         if(weight == 1):
             return
-        imaginary = self.is_imaginary(weight)
+        imaginary = self.is_imaginary_height(weight)
         potentialOptions = []
         maxWord  = self.minWord
         validBase = np.repeat(True,self.numberOfBaseWeights)
@@ -546,7 +546,7 @@ class rootSystem:
                     validBase[baseWordIndex] = False
                     continue
                 lengthChecked = weight - iSum
-                eitherRootImaginary = (self.is_imaginary(iSum) or self.is_imaginary(weight-iSum))
+                eitherRootImaginary = (self.is_imaginary_height(iSum) or self.is_imaginary_height(weight-iSum))
                 if(imaginary and eitherRootImaginary):
                     continue
                 words1 = self.__get_words(i)
@@ -786,12 +786,12 @@ class rootSystem:
                     tempArr.append([k.weights - (k.height//self.deltaHeight)*self.delta,k.height//self.deltaHeight])
             factors.append(tempArr)
         repeat = 1
-        if(self.is_imaginary(sum(simpleRoot))):
+        if(self.is_imaginary_height(sum(simpleRoot))):
             repeat = self.n
         strings = factors[slIndex::repeat]
         while True:
-            for width in range(1,len(strings)//2):
-                for windowStart in range(1,(len(strings)-2*width)):
+            for width in range(1,len(strings)//3):
+                for windowStart in range(1,(len(strings)-3*width)):
                     countEqual = 0
                     for i in range(width):
                         arr1 = np.array([strings[windowStart+i + width*j][0][0] for j in range((len(strings)-(windowStart+i))//width)])
@@ -802,7 +802,7 @@ class rootSystem:
                             break
                     if(countEqual == width):
                         return width
-            added = 4
+            added = 3
             for i in range(added):
                 kdelta+=1
                 w = self.get_words(simpleRoot + self.delta*kdelta)[slIndex]
@@ -901,10 +901,9 @@ class rootSystem:
         #if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
         #    return []
         currentWords = []
-        returnWord = None
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
-        availableCofac: bool = False
-        costfacWeight = np.zeros(self.n+1,dtype=int)
+        inCofac: bool = False
+        potentialCofac: bool = False
         #currentWeight = np.zeros(self.n + 1, dtype=int)
         for i in range(len(self.ordering)-1,-1,-1):
             if(weightsToGenerate[self.ordering[i].rootIndex] > 0): 
@@ -913,28 +912,33 @@ class rootSystem:
                 currentWords.append([word([self.ordering[i]],arr),weightsToGenerate[self.ordering[i].rootIndex]])
             #if(len(currentWords) and self.isImaginary(sum(currentWords[0][0].weights))):
             #    self.__nextSmallest(0,currentWords)
-        while(len(currentWords) != 0):
+        foundFlag = True
+        while(foundFlag and len(currentWords) > 1):
             foundFlag = False
             for possibleAppendInd in range(len(currentWords)):
                 if(possibleAppendInd == len(currentWords)-1 and currentWords[-1][1] == 1):
                     continue
-                if(self.contains_weight(currentWords[-1][0].weights + currentWords[possibleAppendInd][0].weights)):
+                leftWeight = currentWords[-1][0].weights
+                rightCofac = currentWords[-1][0][word.list_cost_fac(currentWords[-1][0]):]
+                if(inCofac):
+                    leftWeight = self.letter_list_to_weights(rightCofac)
+                if(self.contains_weight(leftWeight + currentWords[possibleAppendInd][0].weights)
+                    and (not self.is_imaginary_height(currentWords[-1][0].height) or self.e_bracket(currentWords[-1][0] + currentWords[possibleAppendInd][0]))):
+                        if(possibleAppendInd == len(currentWords)-1 
+                           or(possibleAppendInd == len(currentWords)-2 and currentWords[-1][1]==1)):
+                            potentialCofac = True
+                        currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
+                        foundFlag = True
+                        break
+                if(not inCofac and potentialCofac and 
+                   self.contains_weight(weightsToGenerate + self.letter_list_to_weights(rightCofac) - currentWords[-1][0].weights)
+                   and self.contains_weight(self.letter_list_to_weights(rightCofac) + currentWords[possibleAppendInd][0].weights)
+                   and (not self.is_imaginary_height(len(rightCofac)) or self.list_e_bracketing(np.concatenate((rightCofac, currentWords[possibleAppendInd][0].string))))):
                     currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
                     foundFlag = True
+                    inCofac = True
                     break
-                if(currentWords[-1][0].height >= self.deltaHeight and 
-                    self.contains_weight(self.letter_list_to_weights(currentWords[-1][0].string[word.list_cost_fac(currentWords[-1][0].string):]) 
-                                        + currentWords[possibleAppendInd][0].weights)):
-                    currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
-                    foundFlag = True
-                    break
-            if(not foundFlag or (len(currentWords) == 1 and currentWords[0][1] == 1)):
-                if(returnWord is None):
-                    returnWord = currentWords[-1][0]
-                else:
-                    returnWord = returnWord + currentWords[-1][0]
-                self.__decrement_list(currentWords,-1)
-        return returnWord
+        return currentWords[-1][0]
     def SL_word_algo_2(self,weightsToGenerate):
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
         currentWords = []
