@@ -902,7 +902,6 @@ class rootSystem:
         #    return []
         currentWords = []
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
-        inCofac: bool = False
         potentialCofac: bool = False
         #currentWeight = np.zeros(self.n + 1, dtype=int)
         for i in range(len(self.ordering)-1,-1,-1):
@@ -914,14 +913,14 @@ class rootSystem:
             #    self.__nextSmallest(0,currentWords)
         foundFlag = True
         while(foundFlag and len(currentWords) > 1):
+            if(np.all(currentWords[-1][0].weights == [1,2,3,4,1])):
+                pass
             foundFlag = False
             for possibleAppendInd in range(len(currentWords)):
                 if(possibleAppendInd == len(currentWords)-1 and currentWords[-1][1] == 1):
                     continue
                 leftWeight = currentWords[-1][0].weights
                 rightCofac = currentWords[-1][0][word.list_cost_fac(currentWords[-1][0]):]
-                if(inCofac):
-                    leftWeight = self.letter_list_to_weights(rightCofac)
                 if(self.contains_weight(leftWeight + currentWords[possibleAppendInd][0].weights)
                     and (not self.is_imaginary_height(currentWords[-1][0].height) or self.e_bracket(currentWords[-1][0] + currentWords[possibleAppendInd][0]))):
                         if(possibleAppendInd == len(currentWords)-1 
@@ -930,14 +929,11 @@ class rootSystem:
                         currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
                         foundFlag = True
                         break
-                if(not inCofac and potentialCofac and 
-                   self.contains_weight(weightsToGenerate + self.letter_list_to_weights(rightCofac) - currentWords[-1][0].weights)
-                   and self.contains_weight(self.letter_list_to_weights(rightCofac) + currentWords[possibleAppendInd][0].weights)
-                   and (not self.is_imaginary_height(len(rightCofac)) or self.list_e_bracketing(np.concatenate((rightCofac, currentWords[possibleAppendInd][0].string))))):
-                    currentWords = self.__combine_current_words(currentWords,possibleAppendInd,len(currentWords)-1)
-                    foundFlag = True
-                    inCofac = True
-                    break
+                if(potentialCofac and  
+                   self.contains_weight(weightsToGenerate + self.letter_list_to_weights(rightCofac) - currentWords[-1][0].weights)):
+                    potentialRightCofac = self.SL_word_algo(weightsToGenerate+self.letter_list_to_weights(rightCofac) - currentWords[-1][0].weights)
+                    if(word.letter_list_cmp(potentialRightCofac,np.concatenate((rightCofac,currentWords[possibleAppendInd][0].string))) >= 0):
+                        return word(np.concatenate((currentWords[-1][0].string[:-len(rightCofac)],potentialRightCofac.string)),weightsToGenerate)
         return currentWords[-1][0]
     def SL_word_algo_2(self,weightsToGenerate):
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
