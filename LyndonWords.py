@@ -558,6 +558,8 @@ class rootSystem:
                             (a,b) = (word2,word1)
                         if(not imaginary):
                             #Checks to see if bracket is non-zero
+                            if(np.all(self.weights == [2,2,4,4,4,5,5])):
+                                pass
                             newWord = a+b
                             if word.letter_list_cmp(newWord.string,maxWord.string) <= 0:
                                 continue
@@ -733,8 +735,8 @@ class rootSystem:
             for i in range(0,n-2):
                 mat[i][i+1] = -1
                 mat[i+1][i] = -1
-            mat[-1][-2] = -2
-            mat[-2][-1] = -1
+            mat[-2][-1] = -2
+            mat[-1][-2] = -1
             return mat
         elif(type == 'C'):
             mat = 2*np.eye(n,dtype=int)
