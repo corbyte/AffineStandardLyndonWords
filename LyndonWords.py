@@ -144,7 +144,7 @@ class rootSystem:
         else:
             return True
         weights = re.weights - (self.delta * re.weights[0])
-        return np.dot(weights[1:] ,(self.cartan_matrix @im.hs)) != 0
+        return np.dot(im.hs ,(self.sym_matrix @ weights[1:])) != 0
     def h_bracket(self,word:word) -> np.array:
         a = self.costfac(word)[0]
         if(a is None):
@@ -178,7 +178,7 @@ class rootSystem:
         hs = self.list_h_bracketing(im)
         realWeights = self.letter_list_to_weights(re)
         weights = realWeights - (self.delta * realWeights[0])
-        return np.dot(weights[1:] ,(self.cartan_matrix @hs)) != 0
+        return np.dot(weights[1:] ,(self.sym_matrix @hs)) != 0
     def __init__(self, ordering,type:str):
         self.type = type.upper()
         if( len(self.type) != 1 or self.type < 'A' or self.type > 'G' ):
@@ -236,6 +236,8 @@ class rootSystem:
             self.delta = rootSystem.G_delta()
         self.delta.flags.writeable = False
         self.deltaHeight = sum(self.delta)
+        self.vectors_norm2 = rootSystem.basis_vector_norm2(self.type,self.n)
+        self.sym_matrix = self.get_sym_matrix()
     def A_weights(n):
         size = n + 1
         arr = []
@@ -558,8 +560,6 @@ class rootSystem:
                             (a,b) = (word2,word1)
                         if(not imaginary):
                             #Checks to see if bracket is non-zero
-                            if(np.all(self.weights == [2,2,4,4,4,5,5])):
-                                pass
                             newWord = a+b
                             if word.letter_list_cmp(newWord.string,maxWord.string) <= 0:
                                 continue
@@ -684,6 +684,57 @@ class rootSystem:
         return np.array([1,2,3,4,2],dtype=int)
     def G_delta():
         return np.array([1,2,3],dtype=int)
+    def basis_vector_norm2(t:str, n:int) -> np.array:
+        t = t.upper()
+        if(n<= 0):
+            raise ValueError("n must be positive")
+        values = np.zeros(n,dtype=int)
+        if(t == 'A'):
+            for i in range(len(values)):
+                values[i] = 2
+            return values
+        elif(t == 'B'):
+            for i in range(len(values)-1):
+                values[i] = 2
+            values[-1] = 1
+            return values
+        elif( t== 'C'):
+            for i in range(len(values)-1):
+                values[i] = 2
+            values[-1] = 4
+            return values
+        elif(t == 'D'):
+            for i in range(len(values)-1):
+                values[i] = 2
+            return values
+        elif(t == 'E'):
+            if(n > 5 and n < 9):
+                for i in range(len(values)):
+                    values[i] = 2
+                return values
+            else:
+                raise ValueError("Invaid n for Type E")
+        elif(t == 'F'):
+            if(n == 4):
+                values[0] = 2
+                values[1] = 2
+                values[2] = 1
+                values[3] = 1
+                return values
+            else:
+                raise ValueError("Invalid n for Type F")
+        elif(t == 'G'):
+            if(n == 2):
+                values[0] = 2
+                values[1] = 3
+                return values
+            else:
+                raise ValueError("Invalid n for Type G")
+    def get_sym_matrix(self):
+        diag = np.zeros((self.n,self.n),dtype=int)
+        for i in range(self.n):
+            diag[i,i] = self.vectors_norm2[i]
+        return diag @ self.cartan_matrix
     def print_format(words, formatfunc):
         for word in words:
             print(formatfunc(word))
@@ -735,8 +786,8 @@ class rootSystem:
             for i in range(0,n-2):
                 mat[i][i+1] = -1
                 mat[i+1][i] = -1
-            mat[-2][-1] = -2
-            mat[-1][-2] = -1
+            mat[-2][-1] = -1
+            mat[-1][-2] = -2
             return mat
         elif(type == 'C'):
             mat = 2*np.eye(n,dtype=int)
@@ -769,7 +820,7 @@ class rootSystem:
                 for i in range(0,n-1):
                     mat[i][i+1] = -1
                     mat[i+1][i] = -1
-                mat[1][2] = -2
+                mat[2][1] = -2
                 return mat
         elif(type == 'G'):
             if(n == 2):
