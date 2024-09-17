@@ -169,3 +169,16 @@ def check_delta_type_prediction_perms(rootsystems,k=2):
     for rootsys in rootsystems:
         for i in check_delta_type_prediction(rootsys,k):
             yield i
+class MaxPeriodicityReturn:
+    def __init__(self,periodicity,maxRoot,ordering):
+        self.periodicity = periodicity
+        self.maxRoot = maxRoot
+        self.ordering = ordering
+def max_periodicity_rootSystem(rootsys:rootSystem):
+    max = 0
+    for i in rootsys.baseWeights[:-1]:
+        res = rootsys.get_periodicity(i)
+        if(res > max):
+            max = res
+            maxRoot = i
+    return MaxPeriodicityReturn(max,maxRoot,str(rootsys.ordering))
