@@ -591,7 +591,7 @@ class rootSystem:
             self.weightToWordDictionary[combinations.tobytes()] = liPotentialOptions
     def get_words_by_base(self):
         returnarr = []
-        for i in self.getBaseWeights():
+        for i in self.baseWeights:
             returnarr.append(np.array(self.get_affine_words(i)))
         return np.array(returnarr)
     def get_monotonicity(self, comb,deltaIndex = 0):
