@@ -5,3 +5,4 @@ __pycache__/tests.cpython-311.pyc
 note.txt
 *.csv
 __pycache__/AnalysisFuncs.cpython-311.pyc
+.vscode/*
