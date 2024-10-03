@@ -198,20 +198,7 @@ class rootSystem:
                 self.minWord = i
             i.cofactorizationSplit = 0
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
-        if(self.type == 'A'):
-            self.baseWeights = rootSystem.A_weights(self.n)
-        elif(self.type == 'B'):
-            self.baseWeights = rootSystem.B_weights(self.n)
-        elif(self.type == 'C'):
-            self.baseWeights = rootSystem.C_weights(self.n)
-        elif(self.type =='D'):
-            self.baseWeights = rootSystem.D_weights(self.n)
-        elif(self.type == 'E'):
-            self.baseWeights = rootSystem.E_weights(self.n)
-        elif(self.type == 'F'):
-            self.baseWeights = rootSystem.F_weights()
-        elif(self.type == 'G'):
-            self.baseWeights = rootSystem.G_weights()
+        self.baseWeights = rootSystem.get_base_weights(self.type,self.n)
         self.numberOfBaseWeights = len(self.baseWeights)
         if(self.type == 'C' and self.n == 2):
             self.cartan_matrix = np.array([
@@ -220,25 +207,43 @@ class rootSystem:
             ])
         else:
             self.cartan_matrix = rootSystem.get_cartan_matrix(self.type,self.n)
-        if(self.type == 'A'):
-            self.delta = rootSystem.A_delta(self.n)
-        elif (self.type == 'B'):
-            self.delta = rootSystem.B_delta(self.n) 
-        elif(self.type == 'C'):
-            self.delta = rootSystem.C_delta(self.n)
-        elif(self.type == 'D'):
-            self.delta = rootSystem.D_delta(self.n)
-        elif(self.type == 'E'):
-            self.delta = rootSystem.E_delta(self.n)
-        elif(self.type == 'F'):
-            self.delta = rootSystem.F_delta()
-        elif(self.type == 'G'):
-            self.delta = rootSystem.G_delta()
+        self.delta = rootSystem.get_delta(self.type,self.n)
         self.delta.flags.writeable = False
         self.deltaHeight = sum(self.delta)
         self.vectors_norm2 = rootSystem.basis_vector_norm2(self.type,self.n)
         self.sym_matrix = self.get_sym_matrix()
-    def A_weights(n):
+    def get_base_weights(type,n):
+        if(type == 'A'):
+            return rootSystem.A_weights(n)
+        elif(type == 'B'):
+            return rootSystem.B_weights(n)
+        elif(type == 'C'):
+            return rootSystem.C_weights(n)
+        elif(type =='D'):
+            return rootSystem.D_weights(n)
+        elif(type == 'E'):
+            return rootSystem.E_weights(n)
+        elif(type == 'F'):
+            return rootSystem.F_weights()
+        elif(type == 'G'):
+            return rootSystem.G_weights()
+    def get_delta(type,n) -> np.array:
+        if(type == 'A'):
+            return rootSystem.A_delta(n)
+        elif (type == 'B'):
+            return rootSystem.B_delta(n) 
+        elif(type == 'C'):
+            return rootSystem.C_delta(n)
+        elif(type == 'D'):
+            return rootSystem.D_delta(n)
+        elif(type == 'E'):
+            return rootSystem.E_delta(n)
+        elif(type == 'F'):
+            return rootSystem.F_delta()
+        elif(type == 'G'):
+            return rootSystem.G_delta()
+        raise ValueError("Incorrect value for type")
+    def A_weights(n) -> np.array:
         size = n + 1
         arr = []
         for length in range(1,n+1):
@@ -250,7 +255,7 @@ class rootSystem:
         rootSystem.__gen_affine_base_weights(arr,rootSystem.A_delta(n))
         arr.sort(key = sum)
         return np.array(arr) 
-    def B_weights(n):
+    def B_weights(n) -> np.array:
         size = n+1
         arr = []
         for i in range(1,n+1):
@@ -291,7 +296,7 @@ class rootSystem:
         rootSystem.__gen_affine_base_weights(arr,rootSystem.B_delta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def C_weights(n):
+    def C_weights(n) -> np.array:
         size = n+1
         arr = []
         for i in range(n):
@@ -334,7 +339,7 @@ class rootSystem:
         rootSystem.__gen_affine_base_weights(arr,rootSystem.C_delta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def D_weights(n):
+    def D_weights(n) -> np.array:
         size = n+1
         arr = []
         for i in range(n):
@@ -374,8 +379,8 @@ class rootSystem:
                     oneIndex+=1
         rootSystem.__gen_affine_base_weights(arr,rootSystem.D_delta(n))
         arr.sort(key = sum)
-        return arr
-    def E_weights(n,affine:bool=True):
+        return np.array(arr,dtype=int)
+    def E_weights(n,affine:bool=True) ->np.array:
         arr = []
         weights  = []
         if(n==6):
@@ -429,7 +434,7 @@ class rootSystem:
             rootSystem.__gen_affine_base_weights(arr,rootSystem.E_delta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def F_weights(affine:bool=True):
+    def F_weights(affine:bool=True) -> np.array:
         arr = []
         for i in [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[0,0,1,1],[0,1,1,1],
                   [0,1,2,2],[0,1,2,1],[1,1,1,1],[1,1,2,1],[1,2,2,1],[1,2,3,1],
@@ -632,7 +637,7 @@ class rootSystem:
                             if( betaWord<sumWord == alphaWord < sumWord):
                                 exceptions.append((betaWord,alphaWord))
         return exceptions
-    def get_decompositions(self,weights):
+    def __get_decompositions(self,weights):
         if(weights is not np.array):
             weights = np.array(weights)
         returnarr = []
@@ -640,11 +645,30 @@ class rootSystem:
         while(delta*self.deltaHeight< sum(weights)):
             for i in self.baseWeights:
                 if len(self.__get_words(weights-i - delta*self.delta)) > 0:
-                    returnarr.append((i,weights-i-delta*self.delta))
+                    returnarr.append((i + delta*self.delta,weights-i-delta*self.delta))
             delta+= 1 
         return returnarr
+    def get_decompositions(delta,weightToDecompose,baseWeights):
+        if(weightToDecompose is not np.array):
+            weightToDecompose = np.array(weightToDecompose)
+        deltaSum = sum(delta)
+        returnarr = []
+        deltaIndex = 0
+        while(deltaIndex*deltaSum < sum(weightToDecompose)):
+            for i in baseWeights:
+                if(sum(i) + deltaSum*deltaIndex >= sum(weightToDecompose)):
+                    continue
+                potential_weight = weightToDecompose - (i + deltaIndex * delta)
+                if(np.any(potential_weight < 0)):
+                    continue
+                potential_weight = potential_weight - delta*((sum(potential_weight)-1)//deltaSum)
+                for bw in baseWeights:
+                    if(np.all(potential_weight == bw)):
+                        returnarr.append((i+deltaIndex*delta,weightToDecompose-i-deltaIndex*delta))
+            deltaIndex+= 1
+        return returnarr
     def get_potential_words(self,weights):
-        decomps = self.get_decompositions(weights)
+        decomps = self.__get_decompositions(weights)
         arr =[]
         for i in decomps:
             for j in self.__get_words(i[0]):
@@ -654,35 +678,36 @@ class rootSystem:
                     else:
                         arr.append(k+j)
         return arr
-    def A_delta(n:int):
+    def A_delta(n:int) -> np.array:
         return np.ones(n+1,dtype=int)
-    def B_delta(n:int):
+    def B_delta(n:int) -> np.array:
         arr = np.repeat(2,n+1)
         arr[0] = 1
         arr[1] = 1
         return arr
-    def C_delta(n:int):
+    def C_delta(n:int) -> np.array:
         delta = np.repeat(2,n+1)
         delta[0] = 1
         delta[-1] = 1
         return delta
-    def D_delta(n:int):
+    def D_delta(n:int) -> np.array:
         delta = np.repeat(2,n+1)
         delta[0] =1
         delta[-1] = 1
         delta[-2] = 1
         delta[1] = 1
         return delta
-    def E_delta(n:int):
+    def E_delta(n:int) -> np.array:
         if(n == 6):
             return np.array([1,1,2,3,2,1,2],dtype=int)
         if(n == 7):
             return np.array([1,1,2,3,4,3,2,2],dtype=int)
         if(n == 8):
             return np.array([1,2,3,4,5,6,4,2,3])
-    def F_delta():
+        raise ValueError("n must be 6,7,8")
+    def F_delta() -> np.array:
         return np.array([1,2,3,4,2],dtype=int)
-    def G_delta():
+    def G_delta() -> np.array:
         return np.array([1,2,3],dtype=int)
     def basis_vector_norm2(t:str, n:int) -> np.array:
         t = t.upper()

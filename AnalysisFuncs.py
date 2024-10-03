@@ -182,3 +182,29 @@ def max_periodicity_rootSystem(rootsys:rootSystem):
             max = res
             maxRoot = i
     return MaxPeriodicityReturn(max,maxRoot,str(rootsys.ordering))
+def check_epsilon_conj(type,n):
+    roots = rootSystem.get_base_weights(type,n)
+    delta = rootSystem.get_delta(type,n)
+    exceptionArr = []
+    newRoots = []
+    for i in range(n+1):
+        arr = np.zeros(n+1,dtype=int)
+        arr[i] = 1
+        newRoots.append(delta + arr)
+    for i in newRoots:
+        if(sum(i) <= 2):
+            continue
+        decomp = rootSystem.get_decompositions(delta,i,roots)
+        for j in decomp:
+            if(sum(j[0]) +1 == sum(i)):
+                continue
+            flag = False
+            for k in decomp:
+                if(sum(k[0]) == (sum(j[0])+1)):
+                    diff = k[0] - j[0]
+                    if((min(diff) == 0) and (max(diff) == 1)):
+                        flag = True
+                        break
+            if(not flag):
+                exceptionArr.append((i,j))
+    return exceptionArr
