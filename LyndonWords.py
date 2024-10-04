@@ -1,5 +1,6 @@
 import numpy as np
 class letter:
+    """Class for letters of words"""
     index:int
     rootIndex:int
     def __init__(self,rootIndex:int=0):
@@ -25,11 +26,16 @@ class letter:
     def __ge__(self,other):
         return self.index >= other.index
 class word:
-    #Maybe change to sparse matrix
+    """Class for words, as a string of letters"""
     def __init__(self, wordArray,weights):
+        """Initialization of word object
+        
+        wordArray -- iterable of letters
+        weights -- number of occurances of each letter in the wordArray, given as an iterable
+        """
         self.string = np.array(wordArray,dtype=letter)
         self.hs = None
-        self.weights = weights
+        self.weights = np.array(weights)
         self.height = sum(self.weights)
         self.weights.flags.writeable = False
         self.cofactorizationSplit = None
@@ -61,6 +67,13 @@ class word:
     def __add__(self,other):
         return word(np.concatenate((self.string,other.string),dtype=word),self.weights + other.weights) 
     def letter_list_cmp(first,second):
+        """comparision method for two words
+        
+        If result is 
+            < 0 then first < second
+            == 0 then first == second
+            > 0 then first > second
+        """
         lFirst = len(first)
         lSecond = len(second)
         if(lFirst < lSecond):
@@ -80,6 +93,11 @@ class word:
             return 1
         return 0
     def strict_letter_list_cmp(first,second):
+        """comparision method for two words
+        
+        Same result as regular letter_list_cmp, except, it returns 0, 
+            if one is a left substring of the other
+        """
         lFirst = len(first)
         lSecond = len(second)
         if(lFirst < lSecond):
@@ -93,14 +111,17 @@ class word:
                 return -1
         return 0
     def list_cost_fac(list):
+        """Cofactorization for a string of letters instead of a word"""
         smallestIndex = len(list)-1
         for i in range(len(list)-1,0,-1):
             if(word.letter_list_cmp(list[smallestIndex:],list[i:]) > 0):
                 smallestIndex = i
         return smallestIndex        
     def no_commas(self):
+        """returns the word without commas as a string"""
         return ''.join(str(i) for i in self.string)
 class letterOrdering:
+    """Class used to contain the ordering of letters in a RootSystem"""
     def __init__(self, letterOrdering):
         letterOrdering = [letter(i) for i in letterOrdering]
         self.order:list[letter] = letterOrdering
@@ -122,14 +143,24 @@ class letterOrdering:
         self.iterIndex+=1
         return temp
     def to_letter_list(self) -> np.ndarray:
+        """Returns mapping of letters to their order
+        
+        e.g. If order is 2<1<3<0 -> [3,1,0,2]"""
         lst = np.zeros(len(self.order),dtype=object)
         for let in self.order:
             lst[let.rootIndex] = let
         return lst
     def to_ordered_list(self) -> np.ndarray:
+        """Returns letter in order
+        
+        e.g. 2<1<3<0 -> [2,1,3,0]"""
         return np.array(self.order,dtype=object)
 class rootSystem:
-    def e_bracket(self, bracketWord:word):      
+    """Class to represent a rootsystem"""
+    def e_bracket(self, bracketWord:word) -> bool:
+        """Determines if the bracketing of a word is non-zero, and the word is real
+        
+        returns True if the bracketing is non-zero"""
         if(len(bracketWord) == 1):
             return True      
         (A,B) = self.costfac(bracketWord)
@@ -146,6 +177,11 @@ class rootSystem:
         weights = re.weights - (self.delta * re.weights[0])
         return np.dot(im.hs ,(self.sym_matrix @ weights[1:])) != 0
     def h_bracket(self,word:word) -> np.array:
+        """Determines the bracketing of an imaginary word
+        
+        Returns a vector representing the weights of the h_i
+        
+        It will be of length n"""
         a = self.costfac(word)[0]
         if(a is None):
             return np.zeros(self.n,dtype=int)
@@ -155,6 +191,7 @@ class rootSystem:
             return -newA[1:]
         return newA[1:]
     def list_h_bracketing(self,letterList) -> bool:
+        """Same as h_bracket but for list of letters"""
         letterlist = letterList[:word.list_cost_fac(letterList)]
         weights = self.letter_list_to_weights(letterlist)
         newA = (weights - (self.delta *weights[0]))
@@ -162,6 +199,7 @@ class rootSystem:
             return -newA[1:]
         return newA[1:]
     def list_e_bracketing(self,letterList):
+        """Same as e_bracket but for list of letters"""
         costFacIndex = word.list_cost_fac(letterList)
         A = letterList[:costFacIndex]
         B = letterList[costFacIndex:]
@@ -180,6 +218,11 @@ class rootSystem:
         weights = realWeights - (self.delta * realWeights[0])
         return np.dot(weights[1:] ,(self.sym_matrix @hs)) != 0
     def __init__(self, ordering,type:str):
+        """Initializationof root system
+        
+        ordering -- list of ordering for the rootsystem
+        type -- type of the rootsystem
+        """
         self.type = type.upper()
         if( len(self.type) != 1 or self.type < 'A' or self.type > 'G' ):
             raise ValueError('Type is invalid')
@@ -188,6 +231,7 @@ class rootSystem:
         self.weightToWordDictionary:dict = {}
         self.minWord:word = None
         def weightsGeneration(letter):
+            #Generates simple root vectors
             arr = np.zeros(len(self.ordering),dtype=int)
             arr[letter.rootIndex] = 1
             return arr
@@ -200,19 +244,14 @@ class rootSystem:
             self.weightToWordDictionary[i.weights.tobytes()] = [i]
         self.baseWeights = rootSystem.get_base_weights(self.type,self.n)
         self.numberOfBaseWeights = len(self.baseWeights)
-        if(self.type == 'C' and self.n == 2):
-            self.cartan_matrix = np.array([
-                [2,-2],
-                [-1,2]
-            ])
-        else:
-            self.cartan_matrix = rootSystem.get_cartan_matrix(self.type,self.n)
+        self.cartan_matrix = rootSystem.get_cartan_matrix(self.type,self.n)
         self.delta = rootSystem.get_delta(self.type,self.n)
         self.delta.flags.writeable = False
         self.deltaHeight = sum(self.delta)
         self.vectors_norm2 = rootSystem.basis_vector_norm2(self.type,self.n)
         self.sym_matrix = self.get_sym_matrix()
     def get_base_weights(type,n):
+        """Returns roots of height <= delta for a certain type and n"""
         if(type == 'A'):
             return rootSystem.A_weights(n)
         elif(type == 'B'):
@@ -228,6 +267,7 @@ class rootSystem:
         elif(type == 'G'):
             return rootSystem.G_weights()
     def get_delta(type,n) -> np.array:
+        """Returns delta for a certain type and n"""
         if(type == 'A'):
             return rootSystem.A_delta(n)
         elif (type == 'B'):
@@ -458,12 +498,16 @@ class rootSystem:
         arr.sort(key = sum)
         return np.array(arr)
     def __gen_affine_base_weights(arr,delta:np.array):
+        """Generates the affine roots from the simple lie algebra
+        
+        Used in the get weights function"""
         for i in arr:
             if(i[0] == 1):
                 break
             arr.append(delta - i)
         arr.append(delta)
     def costfac(self,wordToFactor:word):
+        """Returns the costandard factorization of a word as a tuple of 2 words"""
         if(wordToFactor.height == 1):
             return (wordToFactor,None)
         weight = np.copy(wordToFactor.weights)
@@ -507,8 +551,10 @@ class rootSystem:
             return (leftWord,rightWord)
         return (None,None)
     def __get_words(self, combination:np.array):
+        """Gets all words corresponding to a certain root"""
         return self.weightToWordDictionary.get(combination.tobytes(),[])
     def get_words(self, combination):
+        """Gets all words corresponding to a certain root"""
         if(self.contains_weight(combination)):
             ret = self.__get_words(np.array(combination, dtype=int))
             if(len(ret) == 0):
@@ -517,6 +563,7 @@ class rootSystem:
             return ret
         return []
     def get_affine_words(self,weight):
+        """Gets the string of word weight, weight+\delta \cdots for all generated words"""
         matches = []
         k=0
         newWord = self.__get_words(weight + k*self.delta)
@@ -526,8 +573,10 @@ class rootSystem:
             newWord=self.__get_words(weight + k*self.delta)
         return matches
     def is_imaginary_height(self,height:int):
+        """Checks if a word has imaginary height"""
         return height % self.deltaHeight == 0
     def __gen_word(self, combinations:np.array):
+        """Function called to generate a new word"""
         weight = sum(combinations)
         if(weight == 1):
             return
@@ -595,11 +644,20 @@ class rootSystem:
                 index += 1
             self.weightToWordDictionary[combinations.tobytes()] = liPotentialOptions
     def get_words_by_base(self):
+        """Gets words grouped together by base word
+        
+        Used primarily for csv output"""
         returnarr = []
         for i in self.baseWeights:
             returnarr.append(np.array(self.get_affine_words(i)))
         return np.array(returnarr)
     def get_monotonicity(self, comb,deltaIndex = 0):
+        """Gets monotonicity of a chain of words
+        
+        <0 decreasing
+        = 0 not monotone
+        > 0 increasing
+        """
         words = self.get_affine_words(comb)
         for j in range(1,len(words)):
             monotonicity = 0
@@ -615,6 +673,7 @@ class rootSystem:
                 monotonicity = -1
         return monotonicity
     def check_monotonicity(self, filter:{'All', 'Increasing', 'Decreasing','None'}="All"):
+        """Filter for checking monotonicity of all words"""
         returnarr = []
         for i in self.getBaseWeights()[:-1]:
             monotonicity = self.get_monotonicity(i)
@@ -627,6 +686,7 @@ class rootSystem:
             returnarr.append((self.__get_words(i)[0].weights,monotonicity))
         return np.array(returnarr, dtype=object)
     def check_convexity(self):
+        """Checks convexity on the rootsystem"""
         exceptions = []
         wordsByLength = sorted(list(self.weightToWordDictionary.values()),key=lambda x:x[0].height)
         for wordIndex in range(1,len(wordsByLength)):
@@ -638,6 +698,7 @@ class rootSystem:
                                 exceptions.append((betaWord,alphaWord))
         return exceptions
     def __get_decompositions(self,weights):
+        """Gets all decompositions of a word"""
         if(weights is not np.array):
             weights = np.array(weights)
         returnarr = []
@@ -649,6 +710,7 @@ class rootSystem:
             delta+= 1 
         return returnarr
     def get_decompositions(delta,weightToDecompose,baseWeights):
+        """Gets all decompositions of a word"""
         if(weightToDecompose is not np.array):
             weightToDecompose = np.array(weightToDecompose)
         deltaSum = sum(delta)
@@ -668,6 +730,7 @@ class rootSystem:
             deltaIndex+= 1
         return returnarr
     def get_potential_words(self,weights):
+        """This returns all other words that could be factors of a given word"""
         decomps = self.__get_decompositions(weights)
         arr =[]
         for i in decomps:
@@ -710,6 +773,7 @@ class rootSystem:
     def G_delta() -> np.array:
         return np.array([1,2,3],dtype=int)
     def basis_vector_norm2(t:str, n:int) -> np.array:
+        """Calculates the length squared of the root vectors"""
         t = t.upper()
         if(n<= 0):
             raise ValueError("n must be positive")
@@ -756,20 +820,21 @@ class rootSystem:
             else:
                 raise ValueError("Invalid n for Type G")
     def get_sym_matrix(self):
+        """Returns the symmetric cartan matrix"""
         diag = np.zeros((self.n,self.n),dtype=int)
         for i in range(self.n):
             diag[i,i] = self.vectors_norm2[i]
         return diag @ self.cartan_matrix
     def print_format(words, formatfunc):
+        """prints words given a format"""
         for word in words:
             print(formatfunc(word))
-    def delta_format(self,word):
-        retstr = word.noCommas()
-        deltaWords = self.__get_words(self.delta)
-        for i in range(len(deltaWords)):
-            retstr = retstr.replace(deltaWords[i].noCommas(),f"SL_{{{i+1}}}(d)")
-        return retstr
     def parse_to_delta_format(self,parseWord:word):
+        """returns word in terms of SL_i(\delta)
+        
+        The first number of the tuple represents i and the second,
+        the number of times it occurs in a row
+        """
         retarr = []
         deltaWords = self.__get_words(self.delta)
         stack = []
@@ -797,6 +862,7 @@ class rootSystem:
             retarr.append(string)
         return retarr
     def get_cartan_matrix(type:str,n:int):
+        """returns the cartan matrix for a give type and n"""
         if(n <= 0):
             raise ValueError("Invalid Parameters")
         type=type.upper()
@@ -852,6 +918,12 @@ class rootSystem:
                 return np.array([[2,-3],[-1,2]], dtype=int)
         raise ValueError("Invalid parameters")
     def get_periodicity(self, simpleRoot,slIndex:int = 0,kdelta:int = 3) -> int:
+        """Returns the periodicity of a simple root in a rootsystem
+        
+        slIndex -- used in imaginary words
+        kdelta -- the min height to look at
+        """
+        #TODO: Updated based on slightly different definition of periodicity
         factors = []
         self.generate_up_to_delta(kdelta)
         for i in self.get_affine_words(simpleRoot):
@@ -891,6 +963,7 @@ class rootSystem:
                         tempArr.append([k.weights - (k.height//self.deltaHeight)*self.delta,k.height//self.deltaHeight])
                 strings.append(tempArr)
     def generate_up_to_height(self,height:int):
+        """Generate all words in the rootsystem upto a certain height"""
         k=0
         while True:
             for base in self.baseWeights:
@@ -901,19 +974,26 @@ class rootSystem:
                     self.__gen_word(weight)
             k += 1
     def generate_up_to_delta(self,k:int):
+        """Generates all words in the rootsytsem upto a certain k\delta"""
         self.generate_up_to_height(self.deltaHeight*k)
     def contains_weight(self,weights):
+        """Check if a root in is the rootsystem"""
         if(len(weights) != self.n+1):
             return False
         weights = np.array(weights,dtype=int)
         weights -= ((sum(weights)-1)//self.deltaHeight) * self.delta
         return np.any(np.all(self.baseWeights[:] == weights,axis=1))
     def letter_list_to_weights(self,letterList):
+        """Returns a list of letters to vector form"""
         arr = np.zeros(self.n + 1,dtype=int)
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
     def __combine_current_words(self,currentWords,index1:int,index2:int) -> list:
+        """ DEPRECIATED
+        Combines two words
+        
+        """
         if(index1 < 0 or index2 < 0):
             raise ValueError("index 1 or 2 should be nonnegative numbers")
         twoGreater = index2 > index1
@@ -929,6 +1009,7 @@ class rootSystem:
         self.__add_to_list(currentWords,newWord)
         return currentWords
     def __decrement_list(self,currentList, index:int) -> bool:
+        """DEPRECIATED"""
         if(currentList[index][1] == 1):
             currentList.pop(index)
             return True
@@ -936,6 +1017,7 @@ class rootSystem:
             currentList[index][1] -= 1
             return False
     def __add_to_list(self,currentWords,w:word) -> bool:
+        """DEPRECIATED"""
         for i in range(len(currentWords)):
             if(currentWords[i][0] ==w):
                 currentWords[i][1] += 1
@@ -946,6 +1028,7 @@ class rootSystem:
         currentWords.append([w,1])
         return len(currentWords)-1
     def __next_smallest(self,index,currentList,excluded:set = set()):
+        """DEPRECIATED"""
         currentWord = currentList[index][0].string
         self.__decrement_list(currentList,index)
         letterWeight = np.zeros(self.n+1,dtype=int)
@@ -975,6 +1058,7 @@ class rootSystem:
                 break
         return currentList
     def SL_word_algo(self,weightsToGenerate) -> word:
+        """DEPRECIATED"""
         #if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
         #    return []
         currentWords = []
@@ -1013,6 +1097,7 @@ class rootSystem:
                         return word(np.concatenate((currentWords[-1][0].string[:-len(rightCofac)],potentialRightCofac.string)),weightsToGenerate)
         return currentWords[-1][0]
     def SL_word_rightFac_pred(self,weightsToGenerate) -> word:
+        """DEPRECIATED"""
                 #if(sum(weightsToGenerate) > self.deltaHeight and self.isImaginary(sum(weightsToGenerate))):
         #    return []
         currentWords = []
@@ -1051,6 +1136,7 @@ class rootSystem:
                         return None
         #return currentWords[-1][0]
     def SL_word_algo_2(self,weightsToGenerate):
+        """DEPRECIATED"""
         weightsToGenerate = np.array(weightsToGenerate,dtype=int)
         currentWords = []
         for i in range(len(self.ordering)-1,-1,-1):
@@ -1087,6 +1173,3 @@ class rootSystem:
                         continue
                     maxWeight = adjW
                 return self.SL_word_algo_2(maxWeight) + self.SL_word_algo_2(weightsToGenerate - maxWeight)
-if(__name__ == "__main__"):
-    F4 = rootSystem([0,2,1,3,4],"F",1)
-    F4.SL_word_algo([0, 2, 3, 4, 2])
