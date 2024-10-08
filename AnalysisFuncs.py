@@ -141,19 +141,17 @@ def k3_start_delta_type_conditions_met(rootsys:rootSystem,index:int) -> bool:
     if(index == 0):
         return False
     deltaWords = rootsys.get_words(rootsys.delta)
-    endings = np.array([rootsys.costfac(i)[1].weights for i in deltaWords[:index]])
-    indexWeight = np.array(rootsys.costfac(deltaWords[index])[1].weights)
-    for end in endings:
-        if(sum(indexWeight)-1 == sum(end) and sum(indexWeight - end) == 1):
-            return False
-    for i in range(len(endings)):
-        if(endings[i][-1] == 1):
-            endings[i] = rootsys.delta - endings[i]
-    indexWeight[deltaWords[index][-1].rootIndex] -= 1
-    if(indexWeight[-1] == 1):
-        indexWeight = rootsys.delta - indexWeight
-    np.append(endings,[indexWeight],axis=0)
-    return np.linalg.matrix_rank(endings) == index
+    k3Words = rootsys.get_words(rootsys.delta*3)
+    delta1word = deltaWords[index]
+    delta3word = k3Words[index]
+    parsedDelta3 = rootsys.parse_to_delta_format(delta3word)
+    if(len(parsedDelta3) != 3):
+        return False
+    insertedDeltaWord = delta1word[parsedDelta3[1][0]]
+    if((parsedDelta3[0] == (rootsys.costfac(delta1word).no_commas()[:-1] + rootsys.costfac(insertedDeltaWord)[1].no_commas()))
+       and (parsedDelta3[2] == (rootsys.costfac(insertedDeltaWord)[0].no_commas() + rootsys.costfac(delta1word).no_commas()[-1]))):
+        return True
+    return False
 def check_delta_type_prediction(rootsys:rootSystem,k=2):
     result = generate_delta_types(rootsys,k)
     deltaWords = rootsys.get_words(rootsys.delta)
@@ -182,29 +180,3 @@ def max_periodicity_rootSystem(rootsys:rootSystem):
             max = res
             maxRoot = i
     return MaxPeriodicityReturn(max,maxRoot,str(rootsys.ordering))
-def check_epsilon_conj(type,n):
-    roots = rootSystem.get_base_weights(type,n)
-    delta = rootSystem.get_delta(type,n)
-    exceptionArr = []
-    newRoots = []
-    for i in range(n+1):
-        arr = np.zeros(n+1,dtype=int)
-        arr[i] = 1
-        newRoots.append(delta + arr)
-    for i in newRoots:
-        if(sum(i) <= 2):
-            continue
-        decomp = rootSystem.get_decompositions(delta,i,roots)
-        for j in decomp:
-            if(sum(j[0]) +1 == sum(i)):
-                continue
-            flag = False
-            for k in decomp:
-                if(sum(k[0]) == (sum(j[0])+1)):
-                    diff = k[0] - j[0]
-                    if((min(diff) == 0) and (max(diff) == 1)):
-                        flag = True
-                        break
-            if(not flag):
-                exceptionArr.append((i,j))
-    return exceptionArr
