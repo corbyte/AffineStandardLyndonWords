@@ -580,6 +580,8 @@ class rootSystem:
         weight = sum(combinations)
         if(weight == 1):
             return
+        if(np.all(combinations == [2,2,5,2,3])):
+            pass
         imaginary = self.is_imaginary_height(weight)
         potentialOptions = []
         maxWord  = self.minWord
@@ -793,7 +795,7 @@ class rootSystem:
             values[-1] = 4
             return values
         elif(t == 'D'):
-            for i in range(len(values)-1):
+            for i in range(len(values)):
                 values[i] = 2
             return values
         elif(t == 'E'):

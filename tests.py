@@ -195,6 +195,9 @@ class TestStringMethods(unittest.TestCase):
         a = rootSystem(arr,'D')
         a.generate_up_to_height(4*a.deltaHeight)
         self.assertEqual(toSet(a),expected)
+    def test_D_Affine_3(self):
+        D4 = rootSystem([0,4,1,2,3],'D')
+        D4.get_words([2,2,5,2,3])
     def test_F_Affine_1(self):
         arr = [1,2,3,4,0]
         r = rootSystem(arr,'F')
