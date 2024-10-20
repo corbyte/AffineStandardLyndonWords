@@ -580,8 +580,6 @@ class rootSystem:
         weight = sum(combinations)
         if(weight == 1):
             return
-        if(np.all(combinations == [2,2,5,2,3])):
-            pass
         imaginary = self.is_imaginary_height(weight)
         potentialOptions = []
         maxWord  = self.minWord
