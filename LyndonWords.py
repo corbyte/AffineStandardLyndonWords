@@ -729,6 +729,15 @@ class rootSystem:
                         returnarr.append((i+deltaIndex*delta,weightToDecompose-i-deltaIndex*delta))
             deltaIndex+= 1
         return returnarr
+    def get_critical_roots(self,rootindex,k):
+        minuspart = np.zeros(self.n+1,dtype=int)
+        minuspart[rootindex] = 1
+        decomps = rootSystem.get_decompositions(self.delta,k*self.delta - minuspart,self.baseWeights)
+        retlist = [k*self.delta - minuspart]
+        for i in decomps:
+            if(min(i[0] - i[1]) >= 0):
+                retlist.append(i[0])
+        return retlist
     def get_potential_words(self,weights):
         """This returns all other words that could be factors of a given word"""
         decomps = self.__get_decompositions(weights)

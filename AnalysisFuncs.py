@@ -138,20 +138,17 @@ def last_split_delta_type_conditions_met(rootsys:rootSystem,deltaWords:list,inde
             return True
     return False
 def k3_start_delta_type_conditions_met(rootsys:rootSystem,index:int) -> bool:
-    if(index == 0):
+    SLi = rootsys.get_words(rootsys.delta)[index]
+    lastLetterIndex = SLi[-1].rootIndex
+    SLprime = np.copy(rootsys.delta)
+    SLprime[lastLetterIndex] -= 1
+    if(word.letter_list_cmp(SLi[:-1],rootsys.get_words(SLprime)[0].string)==0):
         return False
-    deltaWords = rootsys.get_words(rootsys.delta)
-    k3Words = rootsys.get_words(rootsys.delta*3)
-    delta1word = deltaWords[index]
-    delta3word = k3Words[index]
-    parsedDelta3 = rootsys.parse_to_delta_format(delta3word)
-    if(len(parsedDelta3) != 3):
-        return False
-    insertedDeltaWord = delta1word[parsedDelta3[1][0]]
-    if((parsedDelta3[0] == (rootsys.costfac(delta1word).no_commas()[:-1] + rootsys.costfac(insertedDeltaWord)[1].no_commas()))
-       and (parsedDelta3[2] == (rootsys.costfac(insertedDeltaWord)[0].no_commas() + rootsys.costfac(delta1word).no_commas()[-1]))):
-        return True
-    return False
+    leftfac,rightfac = rootsys.costfac(SLi)
+    for i in range(len(rightfac)-1):
+        if(leftfac[i] != rightfac[i]):
+            return False
+    return True
 def check_delta_type_prediction(rootsys:rootSystem,k=2):
     result = generate_delta_types(rootsys,k)
     deltaWords = rootsys.get_words(rootsys.delta)
@@ -160,8 +157,8 @@ def check_delta_type_prediction(rootsys:rootSystem,k=2):
             yield (rootsys.type, str(rootsys.ordering),i+1,result.deltaTypes[i].type,"cofac")
         #if((result.deltaTypes[i].type == "last") != lastSplitDeltaTypeConditionsMet(rootsys,deltaWords,i)):
         #    exceptions.append((rootsys.type, str(rootsys.ordering),i+1,result.deltaTypes[i].type,"last"))
-        #if((result.deltaTypes[i].type == "k3start") != k3StartDeltaTypeConditionsMet(rootsys,i)):
-        #   yield (rootsys.type, str(rootsys.ordering),i+1,result.deltaTypes[i].type,"k3start") 
+        if((result.deltaTypes[i].type == "k3start") != k3_start_delta_type_conditions_met(rootsys,i)):
+           yield (rootsys.type, str(rootsys.ordering),i+1,result.deltaTypes[i].type,"k3start") 
 def check_delta_type_prediction_perms(rootsystems,k=2):
     rootsys:rootSystem
     for rootsys in rootsystems:
