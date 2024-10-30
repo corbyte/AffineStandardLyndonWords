@@ -732,10 +732,15 @@ class rootSystem:
     def get_critical_roots(self,rootindex,k):
         minuspart = np.zeros(self.n+1,dtype=int)
         minuspart[rootindex] = 1
-        decomps = rootSystem.get_decompositions(self.delta,k*self.delta - minuspart,self.baseWeights)
-        retlist = [k*self.delta - minuspart]
+        decomps = rootSystem.get_decompositions(self.delta,k*self.delta,self.baseWeights)
+        retlist = []
         for i in decomps:
-            if(min(i[0] - i[1]) >= 0):
+            rightless = i[1] - minuspart
+            if(self.is_imaginary_height(sum(i[0]))):
+                continue
+            if(min(rightless) < 0):
+                continue
+            if(min(i[0] - rightless) >= 0):
                 retlist.append(i[0])
         return retlist
     def get_potential_words(self,weights):
