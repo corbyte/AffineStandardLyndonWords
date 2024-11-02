@@ -550,6 +550,20 @@ class rootSystem:
                 continue
             return (leftWord,rightWord)
         return (None,None)
+    def standfac(self,wordToFactor:word):
+        """Returns the standard factorization of a word as a tuple of 2 words"""
+        if(wordToFactor.height == 1):
+            return (wordToFactor,None)
+        weight = np.copy(wordToFactor.weights)
+        for i in range(wordToFactor.height-1,0,-1):
+            weight[wordToFactor.string[i].rootIndex] -= 1
+            leftWords = self.__get_words(weight)
+            for lWord in leftWords:
+                if(word.letter_list_cmp(lWord.string,wordToFactor.string[:i]) == 0):
+                    for rWord in self.__get_words(wordToFactor.weights - weight):
+                        if(word.letter_list_cmp(rWord.string,wordToFactor.string[i:]) == 0):
+                            return (lWord,rWord)
+        return (None,None)
     def __get_words(self, combination:np.array):
         """Gets all words corresponding to a certain root"""
         return self.weightToWordDictionary.get(combination.tobytes(),[])

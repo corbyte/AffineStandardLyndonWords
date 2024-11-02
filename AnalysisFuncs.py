@@ -164,6 +164,16 @@ def check_delta_type_prediction_perms(rootsystems,k=2):
     for rootsys in rootsystems:
         for i in check_delta_type_prediction(rootsys,k):
             yield i
+def check_standard_fac_same(rootsys:rootSystem,k=2):
+    rootsys.generate_up_to_delta(k)
+    baseFacs = [rootsys.standfac(i)[0] for i in rootsys.get_words(rootsys.delta)]
+    for i in range(len(baseFacs)):
+        others = [rootsys.standfac(i)[0] for i in 
+                  rootsys.get_affine_words(rootsys.delta)[i::len(baseFacs)]]
+        for o in others:
+            if(not np.all(o.weights-(o.height//(rootsys.deltaHeight))*rootsys.delta== baseFacs[i].weights)):
+                return (str(rootsys.ordering),i,o.weights-(o.height//(rootsys.deltaHeight)),baseFacs[i].weights)
+    return True
 class MaxPeriodicityReturn:
     def __init__(self,periodicity,maxRoot,ordering):
         self.periodicity = periodicity
