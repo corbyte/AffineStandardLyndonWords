@@ -665,14 +665,14 @@ class rootSystem:
         for i in self.baseWeights:
             returnarr.append(np.array(self.get_affine_words(i)))
         return np.array(returnarr)
-    def get_monotonicity(self, comb,deltaIndex = 0):
+    def get_monotonicity(self, weights,deltaIndex = 0):
         """Gets monotonicity of a chain of words
         
         <0 decreasing
         = 0 not monotone
         > 0 increasing
         """
-        words = self.get_affine_words(comb)
+        words = self.get_affine_words(weights)
         for j in range(1,len(words)):
             monotonicity = 0
             if(words[j-1] < words[j]):

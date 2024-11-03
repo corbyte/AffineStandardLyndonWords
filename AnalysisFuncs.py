@@ -187,3 +187,18 @@ def max_periodicity_rootSystem(rootsys:rootSystem):
             max = res
             maxRoot = i
     return MaxPeriodicityReturn(max,maxRoot,str(rootsys.ordering))
+def monotonicity_conj(rootsys:rootSystem,k=3):
+    rootsys.generate_up_to_delta(k)
+    for base in rootsys.baseWeights[:-1]:
+        baseWord = rootsys.get_words(base)[0]
+        monotone = rootsys.get_monotonicity(base)
+        for i in rootsys.get_words(rootsys.delta):
+            if(i <baseWord and rootsys.e_bracket(i + baseWord)):
+                conj_monotone = 1
+                break
+            if(i > baseWord and rootsys.e_bracket(baseWord + i)):
+                conj_monotone = -1
+                break
+        if(conj_monotone != monotone):
+            return (str(rootsys.ordering),base,monotone,conj_monotone)
+    return True
