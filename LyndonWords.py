@@ -757,6 +757,18 @@ class rootSystem:
             if(min(i[0] - rightless) >= 0):
                 retlist.append(i[0])
         return retlist
+    def get_critical_pairs(self,rootindex,k):
+        for left in self.get_critical_roots(rootindex,k):
+            leftstr = self.get_words(left)[0]
+            rightstr = self.get_words(k*self.delta - left)[0]
+            if(len(rightstr) == 1
+               or(word.letter_list_cmp(leftstr.string[:len(rightstr)-1],rightstr.string[:-1]) == 0
+                  and rightstr > leftstr
+                  and rightstr[-1].rootIndex == rootindex)):
+                yield (leftstr,rightstr)
+    def print_critical_pairs(self,rootindex,k):
+        for (leftstr,rightstr) in self.get_critical_pairs(rootindex,k):
+                print(f"{leftstr.no_commas()}:{rightstr.no_commas()}")
     def get_potential_words(self,weights):
         """This returns all other words that could be factors of a given word"""
         decomps = self.__get_decompositions(weights)
