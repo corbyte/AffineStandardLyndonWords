@@ -743,6 +743,50 @@ class rootSystem:
                         returnarr.append((i+deltaIndex*delta,weightToDecompose-i-deltaIndex*delta))
             deltaIndex+= 1
         return returnarr
+    def general_critical_roots(self,degree):
+        for i in rootSystem.get_decompositions(self.delta,degree,self.baseWeights):
+            left = i[0]
+            right = i[1]
+            rightprime = np.copy(right)
+            rightprime = right - (len(right)-1)//(len(left))*left
+            if(not self.contains_weight(rightprime)):
+                continue
+            diff = left - rightprime
+            flag = True
+            elementLessZero = False
+            for let in range(len(diff)):
+                if(diff[let] < -1):
+                    flag = False
+                    break
+                if(diff[let] == -1):
+                    if(not elementLessZero):
+                        elementLessZero = True
+                        continue
+                    else:
+                        flag = False
+                        break
+            if(flag):
+                yield (left,right)
+    def actual_general_critical_roots(self,degree):
+        for left,right in self.general_critical_roots(degree):
+            leftstrs = self.get_words(left)
+            rightstrs = self.get_words(right)
+            for leftstr in leftstrs:
+                for rightstr in rightstrs:
+                    temprightstr = rightstr.string
+                    flag = False
+                    while(len(temprightstr) > len(leftstr)):
+                        if(word.letter_list_cmp(leftstr,temprightstr[:len(leftstr)]) == 0):
+                            temprightstr = temprightstr[len(leftstr):]
+                        else:
+                            flag = True
+                            break
+                    if(flag):
+                        continue
+                    if(len(rightstr) == 1
+                        or((word.letter_list_cmp(leftstr.string[:len(rightstr)-1],rightstr.string[:-1]) == 0)
+                            and rightstr > leftstr)):
+                            yield (leftstr,rightstr)
     def get_critical_roots(self,rootindex,k):
         minuspart = np.zeros(self.n+1,dtype=int)
         minuspart[rootindex] = 1
