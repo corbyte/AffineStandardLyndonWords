@@ -748,25 +748,10 @@ class rootSystem:
             left = i[0]
             right = i[1]
             rightprime = np.copy(right)
-            rightprime = right - (len(right)-1)//(len(left))*left
+            rightprime = right - ((len(right)-1)//(len(left)))*left
             if(not self.contains_weight(rightprime)):
                 continue
-            diff = left - rightprime
-            flag = True
-            elementLessZero = False
-            for let in range(len(diff)):
-                if(diff[let] < -1):
-                    flag = False
-                    break
-                if(diff[let] == -1):
-                    if(not elementLessZero):
-                        elementLessZero = True
-                        continue
-                    else:
-                        flag = False
-                        break
-            if(flag):
-                yield (left,right)
+            yield (left,right)
     def actual_general_critical_roots(self,degree):
         for left,right in self.general_critical_roots(degree):
             leftstrs = self.get_words(left)
@@ -783,10 +768,17 @@ class rootSystem:
                             break
                     if(flag):
                         continue
-                    if(len(rightstr) == 1
-                        or((word.letter_list_cmp(leftstr.string[:len(rightstr)-1],rightstr.string[:-1]) == 0)
+                    if(len(temprightstr) == 1
+                        or((word.letter_list_cmp(leftstr.string[:len(temprightstr)-1],temprightstr[:-1]) == 0)
                             and rightstr > leftstr)):
                             yield (leftstr,rightstr)
+    def print_actual_general_critical_roots(self,degree,printfunc = None):
+        if(printfunc == None):
+            printfunc = (lambda x: f"{x[0].no_commas()}:{x[1].no_commas()}")
+        if(printfunc == "delta_format"):
+            printfunc = (lambda x: f"{self.parse_to_delta_format(x[0])}:{self.parse_to_delta_format(x[1])}")
+        for i in self.actual_general_critical_roots(degree):
+            print(printfunc(i))
     def get_critical_roots(self,rootindex,k):
         minuspart = np.zeros(self.n+1,dtype=int)
         minuspart[rootindex] = 1
