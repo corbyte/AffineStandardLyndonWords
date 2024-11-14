@@ -748,8 +748,13 @@ class rootSystem:
             left = i[0]
             right = i[1]
             rightprime = np.copy(right)
-            rightprime = right - ((len(right)-1)//(len(left)))*left
-            if(not self.contains_weight(rightprime)):
+            flag = True
+            while((sum(rightprime)-1)//(sum(left)) > 1):
+                rightprime = rightprime - left
+                if(not self.contains_weight(rightprime)):
+                    flag = False
+                    break
+            if(not flag):
                 continue
             yield (left,right)
     def actual_general_critical_roots(self,degree):
