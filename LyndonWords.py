@@ -756,6 +756,20 @@ class rootSystem:
                     break
             if(not flag):
                 continue
+            oneOver = False
+            continueflag = False
+            for j in range(len(i[0])):
+                if((rightprime - left)[j] > 1):
+                    continueflag = True
+                    break
+                if((rightprime - left)[j] == 1):
+                    if(oneOver):
+                        continueflag = True
+                        break
+                    else:
+                        oneOver = True
+            if(continueflag):
+                continue
             yield (left,right)
     def actual_general_critical_roots(self,degree):
         for left,right in self.general_critical_roots(degree):
@@ -773,7 +787,7 @@ class rootSystem:
                             break
                     if(flag):
                         continue
-                    if(len(temprightstr) == 1
+                    if((len(temprightstr) == 1 and word.letter_list_cmp(temprightstr,leftstr) > 0 )
                         or((word.letter_list_cmp(leftstr.string[:len(temprightstr)-1],temprightstr[:-1]) == 0)
                             and rightstr > leftstr)):
                             yield (leftstr,rightstr)
