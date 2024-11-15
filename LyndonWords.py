@@ -723,28 +723,28 @@ class rootSystem:
                     returnarr.append((i + delta*self.delta,weights-i-delta*self.delta))
             delta+= 1 
         return returnarr
-    def get_decompositions(delta,weightToDecompose,baseWeights):
+    def get_decompositions(self,weightToDecompose):
         """Gets all decompositions of a word"""
         if(weightToDecompose is not np.array):
             weightToDecompose = np.array(weightToDecompose)
-        deltaSum = sum(delta)
+        deltaSum = self.deltaHeight
         returnarr = []
         deltaIndex = 0
         while(deltaIndex*deltaSum < sum(weightToDecompose)):
-            for i in baseWeights:
+            for i in self.baseWeights:
                 if(sum(i) + deltaSum*deltaIndex >= sum(weightToDecompose)):
                     continue
-                potential_weight = weightToDecompose - (i + deltaIndex * delta)
+                potential_weight = weightToDecompose - (i + deltaIndex * self.delta)
                 if(np.any(potential_weight < 0)):
                     continue
-                potential_weight = potential_weight - delta*((sum(potential_weight)-1)//deltaSum)
-                for bw in baseWeights:
+                potential_weight = potential_weight - self.delta*((sum(potential_weight)-1)//deltaSum)
+                for bw in self.baseWeights:
                     if(np.all(potential_weight == bw)):
-                        returnarr.append((i+deltaIndex*delta,weightToDecompose-i-deltaIndex*delta))
+                        returnarr.append((i+deltaIndex*self.delta,weightToDecompose-i-deltaIndex*self.delta))
             deltaIndex+= 1
         return returnarr
     def general_critical_roots(self,degree):
-        for i in rootSystem.get_decompositions(self.delta,degree,self.baseWeights):
+        for i in self.get_decompositions(degree):
             left = i[0]
             right = i[1]
             rightprime = np.copy(right)
@@ -771,7 +771,10 @@ class rootSystem:
             if(continueflag):
                 continue
             yield (left,right)
-    def actual_general_critical_roots(self,degree):
+    def print_general_critical_roots(self,degree):
+        for i in self.general_critical_roots(degree):
+            print(i)
+    def realized_critical_roots(self,degree):
         for left,right in self.general_critical_roots(degree):
             leftstrs = self.get_words(left)
             rightstrs = self.get_words(right)
@@ -791,17 +794,21 @@ class rootSystem:
                         or((word.letter_list_cmp(leftstr.string[:len(temprightstr)-1],temprightstr[:-1]) == 0)
                             and rightstr > leftstr)):
                             yield (leftstr,rightstr)
-    def print_actual_general_critical_roots(self,degree,printfunc = None):
+    def print_realized_critical_roots(self,degree,printfunc = None):
         if(printfunc == None):
             printfunc = (lambda x: f"{x[0].no_commas()}:{x[1].no_commas()}")
-        if(printfunc == "delta_format"):
+        elif(printfunc == "delta_format"):
             printfunc = (lambda x: f"{self.parse_to_delta_format(x[0])}:{self.parse_to_delta_format(x[1])}")
-        for i in self.actual_general_critical_roots(degree):
+        elif(printfunc == 'weights'):
+            printfunc = (lambda x: f"{x[0].weights}:{x[1].weights}")
+        elif(printfunc == 'mod_weight'):
+            printfunc = (lambda x: f"{self.mod_delta(x[0].weights)}:{self.mod_delta(x[1].weights)}")
+        for i in self.realized_critical_roots(degree):
             print(printfunc(i))
     def get_critical_roots(self,rootindex,k):
         minuspart = np.zeros(self.n+1,dtype=int)
         minuspart[rootindex] = 1
-        decomps = rootSystem.get_decompositions(self.delta,k*self.delta,self.baseWeights)
+        decomps = self.get_decompositions(k*self.deltas)
         retlist = []
         for i in decomps:
             rightless = i[1] - minuspart
@@ -812,6 +819,10 @@ class rootSystem:
             if(min(i[0] - rightless) >= 0):
                 retlist.append(i[0])
         return retlist
+    def mod_delta(self,root):
+        deltamult = sum(root)//(self.deltaHeight)
+        modroot = root - deltamult*self.delta
+        return (modroot,deltamult)
     def get_critical_pairs(self,rootindex,k):
         for left in self.get_critical_roots(rootindex,k):
             leftstr = self.get_words(left)[0]
