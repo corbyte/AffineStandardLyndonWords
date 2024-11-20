@@ -187,6 +187,9 @@ class rootSystem:
             return True
         weights = re.weights - (self.delta * re.weights[0])
         return np.dot(im.hs ,(self.sym_matrix @ weights[1:])) != 0
+    def split_e_bracket(self,imword,realword) -> bool:
+        weights = realword.weights - (self.delta * realword.weights[0])
+        return np.dot(imword.hs ,(self.sym_matrix @ weights[1:])) != 0
     def h_bracket(self,word:word) -> np.array:
         """Determines the bracketing of an imaginary word
         
@@ -710,7 +713,7 @@ class rootSystem:
                 continue
             returnarr.append((self.__get_words(i)[0].weights,monotonicity))
         return np.array(returnarr, dtype=object)
-    def check_convexity(self,deltagen=0):
+    def check_convexity(self,deltagen=0,word_convexity=False):
         """Checks convexity on the rootsystem"""
         self.generate_up_to_delta(deltagen)
         for w in list(self.weightToWordDictionary.values()):
@@ -719,9 +722,28 @@ class rootSystem:
             currentWord = w[0]
             for decomp in self.get_decompositions(currentWord.weights):
                 if(self.is_imaginary_height(sum(decomp[0])) or self.is_imaginary_height(sum(decomp[1]))):
-                    continue
-                leftWord = self.get_words(decomp[0])[0]
-                rightWord = self.get_words(decomp[1])[0]
+                    if(not word_convexity):
+                        continue
+                    leftim = False
+                    if(self.is_imaginary_height(sum(decomp[0]))):
+                        imheight = decomp[0]
+                        reword = self.get_words(decomp[1])[0]
+                        leftim = True
+                    else:
+                        imheight = decomp[1]
+                        reword = self.get_words(decomp[0])[0]
+                    for i in self.get_words(imheight):
+                        if(self.split_e_bracket(i,reword)):
+                            if(leftim):
+                                leftWord = i
+                                rightWord = reword
+                            else:
+                                rightWord = i
+                                leftWord = reword
+                            break
+                else:
+                    leftWord = self.get_words(decomp[0])[0]
+                    rightWord = self.get_words(decomp[1])[0]
                 if(leftWord > rightWord):
                     continue
                 if(leftWord > currentWord):

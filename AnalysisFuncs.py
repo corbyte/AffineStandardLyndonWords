@@ -230,3 +230,6 @@ def lca_on_critical_roots(rootSys:rootSystem,k=5):
                         continue
                     return lca_critical_roots_return_class(rootSys.ordering,actual_word,criticalPairs[j][0],criticalPairs[j][1])
     return None
+def convexity_from_perm(rootsys:rootSystem,k=5,word_convexity=False):
+    for i in rootsys.check_convexity(k,word_convexity):
+        return (str(rootsys.ordering),i[0].no_commas(),i[1].no_commas(),i[2].no_commas())
