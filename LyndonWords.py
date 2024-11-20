@@ -120,6 +120,17 @@ class word:
     def no_commas(self):
         """returns the word without commas as a string"""
         return ''.join(str(i) for i in self.string)
+    def lca(first,second):
+        if(len(first) < len(second)):
+            minlen = len(first)
+        else:
+            minlen = len(second)
+        for i in range(minlen):
+            if(first[i] != second[i]):
+                if(i == 0):
+                    return []
+                return first[:i]
+        return first[:minlen]
 class letterOrdering:
     """Class used to contain the ordering of letters in a RootSystem"""
     def __init__(self, letterOrdering):
@@ -699,18 +710,24 @@ class rootSystem:
                 continue
             returnarr.append((self.__get_words(i)[0].weights,monotonicity))
         return np.array(returnarr, dtype=object)
-    def check_convexity(self):
+    def check_convexity(self,deltagen=0):
         """Checks convexity on the rootsystem"""
-        exceptions = []
-        wordsByLength = sorted(list(self.weightToWordDictionary.values()),key=lambda x:x[0].height)
-        for wordIndex in range(1,len(wordsByLength)):
-            for sumWord in wordsByLength[wordIndex]:
-                for alphaWords in wordsByLength[:wordIndex]:
-                    for alphaWord in alphaWords:
-                        for betaWord in self.__get_words(sumWord.weights - alphaWord.weights):
-                            if( betaWord<sumWord == alphaWord < sumWord):
-                                exceptions.append((betaWord,alphaWord))
-        return exceptions
+        self.generate_up_to_delta(deltagen)
+        for w in list(self.weightToWordDictionary.values()):
+            if(len(w) > 1):
+                continue
+            currentWord = w[0]
+            for decomp in self.get_decompositions(currentWord.weights):
+                if(self.is_imaginary_height(sum(decomp[0])) or self.is_imaginary_height(sum(decomp[1]))):
+                    continue
+                leftWord = self.get_words(decomp[0])[0]
+                rightWord = self.get_words(decomp[1])[0]
+                if(leftWord > rightWord):
+                    continue
+                if(leftWord > currentWord):
+                    yield (currentWord,self.get_words(decomp[0])[0],self.get_words(decomp[1])[0])
+                if(rightWord < currentWord):
+                    yield (currentWord,self.get_words(decomp[0])[0],self.get_words(decomp[1])[0])
     def __get_decompositions(self,weights):
         """Gets all decompositions of a word"""
         if(weights is not np.array):
@@ -728,7 +745,6 @@ class rootSystem:
         if(weightToDecompose is not np.array):
             weightToDecompose = np.array(weightToDecompose)
         deltaSum = self.deltaHeight
-        returnarr = []
         deltaIndex = 0
         while(deltaIndex*deltaSum < sum(weightToDecompose)):
             for i in self.baseWeights:
@@ -740,16 +756,15 @@ class rootSystem:
                 potential_weight = potential_weight - self.delta*((sum(potential_weight)-1)//deltaSum)
                 for bw in self.baseWeights:
                     if(np.all(potential_weight == bw)):
-                        returnarr.append((i+deltaIndex*self.delta,weightToDecompose-i-deltaIndex*self.delta))
+                        yield ((i+deltaIndex*self.delta,weightToDecompose-i-deltaIndex*self.delta))
             deltaIndex+= 1
-        return returnarr
     def general_critical_roots(self,degree):
         for i in self.get_decompositions(degree):
             left = i[0]
             right = i[1]
             rightprime = np.copy(right)
             flag = True
-            while((sum(rightprime)-1)//(sum(left)) > 1):
+            while((sum(rightprime)-1)//(sum(left)) >= 1):
                 rightprime = rightprime - left
                 if(not self.contains_weight(rightprime)):
                     flag = False
@@ -790,10 +805,11 @@ class rootSystem:
                             break
                     if(flag):
                         continue
-                    if((len(temprightstr) == 1 and word.letter_list_cmp(temprightstr,leftstr) > 0 )
+                    if((len(temprightstr) == 1 and word.letter_list_cmp(temprightstr,leftstr.string) > 0 )
                         or((word.letter_list_cmp(leftstr.string[:len(temprightstr)-1],temprightstr[:-1]) == 0)
                             and rightstr > leftstr)):
                             yield (leftstr,rightstr)
+                                                        
     def print_realized_critical_roots(self,degree,printfunc = None):
         if(printfunc == None):
             printfunc = (lambda x: f"{x[0].no_commas()}:{x[1].no_commas()}")

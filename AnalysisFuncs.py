@@ -211,3 +211,22 @@ def monotonicity_conj(rootsys:rootSystem,k=3):
         if(conj_monotone != monotone):
             return monotone_return_class(False,str(rootsys.ordering),base,monotone,conj_monotone)
     return monotone_return_class(True)
+class lca_critical_roots_return_class:
+    def __init__(self,rootsysorder,w,leftcrit,rightcrit):
+        self.rootsysorder = rootsysorder
+        self.word = w
+        self.leftcrit = leftcrit
+        self.rightcrit = rightcrit
+    def __str__(self):
+        return str((str(self.rootsysorder),self.word.no_commas(),self.leftcrit.no_commas(),self.rightcrit.no_commas()))
+def lca_on_critical_roots(rootSys:rootSystem,k=5):
+    for kdelta in range(k+1):
+        for baseWeight in rootSys.baseWeights[:-1]:
+            criticalPairs = list(rootSys.realized_critical_roots(kdelta *rootSys.delta + baseWeight))
+            actual_word = rootSys.get_words(kdelta * rootSys.delta + baseWeight)[0]
+            for j in range(len(criticalPairs)):
+                if(len(word.lca(actual_word,criticalPairs[j][0])) < len(criticalPairs[j][1])):
+                    if(word.letter_list_cmp(actual_word.string,list(criticalPairs[j][0].string) + list(criticalPairs[j][1].string)) == 0):
+                        continue
+                    return lca_critical_roots_return_class(rootSys.ordering,actual_word,criticalPairs[j][0],criticalPairs[j][1])
+    return None
