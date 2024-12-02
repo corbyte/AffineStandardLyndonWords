@@ -70,9 +70,11 @@ class word:
         """comparision method for two words
         
         If result is 
-            < 0 then first < second
-            == 0 then first == second
-            > 0 then first > second
+            2, then first > second and second is not a substring of first
+            1, then first > second and second is a substring of first
+            0, then first is equal to second
+            -1, then first < second and first is a substring of second
+            -2, then first < second and first is not a substring of second
         """
         lFirst = len(first)
         lSecond = len(second)
@@ -84,31 +86,13 @@ class word:
             if(type(first[i])is not letter or type(second[i]) is not letter):
                 raise ValueError("List contains non-letter object")
             if(first[i].index > second[i].index):
-                return 1
+                return 2
             if(first[i].index < second[i].index):
-                return -1
+                return -2
         if(lFirst < lSecond):
             return -1
         if(lFirst > lSecond):
             return 1
-        return 0
-    def strict_letter_list_cmp(first,second):
-        """comparision method for two words
-        
-        Same result as regular letter_list_cmp, except, it returns 0, 
-            if one is a left substring of the other
-        """
-        lFirst = len(first)
-        lSecond = len(second)
-        if(lFirst < lSecond):
-            minLen = lFirst
-        else:
-            minLen = lSecond
-        for i in range(minLen):
-            if(first[i].index > second[i].index):
-                return 1
-            if(first[i].index < second[i].index):
-                return -1
         return 0
     def list_cost_fac(list):
         """Cofactorization for a string of letters instead of a word"""
@@ -264,6 +248,7 @@ class rootSystem:
         self.deltaHeight = sum(self.delta)
         self.vectors_norm2 = rootSystem.basis_vector_norm2(self.type,self.n)
         self.sym_matrix = self.get_sym_matrix()
+        self._maxWord:word  = self.get_words(weightsGeneration(self.ordering[-1]))[0]
     def get_base_weights(type,n):
         """Returns roots of height <= delta for a certain type and n"""
         if(type == 'A'):
@@ -778,7 +763,7 @@ class rootSystem:
                 potential_weight = potential_weight - self.delta*((sum(potential_weight)-1)//deltaSum)
                 for bw in self.baseWeights:
                     if(np.all(potential_weight == bw)):
-                        yield ((i+deltaIndex*self.delta,weightToDecompose-i-deltaIndex*self.delta))
+                        yield (i+deltaIndex*self.delta,weightToDecompose-i-deltaIndex*self.delta)
             deltaIndex+= 1
     def general_critical_roots(self,degree):
         for i in self.get_decompositions(degree):
@@ -1061,6 +1046,33 @@ class rootSystem:
             if(n == 2):
                 return np.array([[2,-3],[-1,2]], dtype=int)
         raise ValueError("Invalid parameters")
+    def get_min_right_factor(self,root):
+        minword = self._maxWord
+        for l,r in self.get_decompositions(root):
+            if(self.is_imaginary_height(sum(l)) or self.is_imaginary_height(sum(r))):
+                if(self.is_imaginary_height(sum(l))):
+                    imweight = l
+                    realword = self.get_words(r)[0]
+                else:
+                    imweight = r
+                    realword = self.get_words(r)[0]
+                for imword in self.get_words(imweight):
+                    if(self.split_e_bracket(imword,realword)):
+                        if(word.letter_list_cmp(imword.string,realword.string) > 0):
+                            if(word.letter_list_cmp(imword.string,minword.string) < 0):
+                                minword = imword
+                        else:
+                            if(word.letter_list_cmp(realword.string,minword.string) < 0):
+                                minword = realword
+                        break
+            else:
+                lword:word = self.get_words(l)[0]
+                rword:word = self.get_words(r)[0]
+                if(word.letter_list_cmp(lword.string,rword.string) >= 0):
+                    continue
+                if(word.letter_list_cmp(rword.string,minword.string) < 0):
+                    minword = rword
+        return minword
     def get_periodicity(self, simpleRoot,slIndex:int = 0,kdelta:int = 3) -> int:
         """Returns the periodicity of a simple root in a rootsystem
         
