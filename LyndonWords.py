@@ -717,15 +717,19 @@ class rootSystem:
                     else:
                         imheight = decomp[1]
                         reword = self.get_words(decomp[0])[0]
+                    max_found = False
                     for i in self.get_words(imheight):
-                        if(self.split_e_bracket(i,reword)):
+                        if(not max_found and self.split_e_bracket(i,reword)):
                             if(leftim):
                                 leftWord = i
                                 rightWord = reword
+                                max_found = True
                             else:
                                 rightWord = i
                                 leftWord = reword
-                            break
+                                max_found = True
+                        if( (i < currentWord) != (i < reword)):
+                            yield (currentWord,self.get_words(decomp[0])[0],self.get_words(decomp[1])[0])
                 else:
                     leftWord = self.get_words(decomp[0])[0]
                     rightWord = self.get_words(decomp[1])[0]
@@ -943,8 +947,8 @@ class rootSystem:
                 raise ValueError("Invalid n for Type F")
         elif(t == 'G'):
             if(n == 2):
-                values[0] = 2
-                values[1] = 3
+                values[0] = 3
+                values[1] = 1
                 return values
             else:
                 raise ValueError("Invalid n for Type G")
@@ -1044,7 +1048,7 @@ class rootSystem:
                 return mat
         elif(type == 'G'):
             if(n == 2):
-                return np.array([[2,-3],[-1,2]], dtype=int)
+                return np.array([[2,-1],[-3,2]], dtype=int)
         raise ValueError("Invalid parameters")
     def get_min_right_factor(self,root):
         minword = self._maxWord
@@ -1145,3 +1149,9 @@ class rootSystem:
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
+    def get_max_im_word(self,weight,n=1):
+        word = self.get_words(weight)[0]
+        imwords = self.get_words(self.delta * n)
+        for w in imwords:
+            if(self.split_e_bracket(w,word)):
+                return w
