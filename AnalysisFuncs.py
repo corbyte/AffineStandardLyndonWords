@@ -3,7 +3,7 @@ import LyndonWords
 
 def delta_split_at_last(rootsys:rootSystem,index: int) -> bool:
     baseWord = rootsys.get_words(rootsys.delta)[index]
-    deltaWords = rootsys.get_affine_words(rootsys.delta)[index + rootsys.n::rootsys.n]
+    deltaWords = rootsys.get_chain(rootsys.delta)[index + rootsys.n::rootsys.n]
     for deltaWord in deltaWords:
         parsed = rootsys.parse_to_delta_format(deltaWord)
         if(len(parsed) != 3):
@@ -15,7 +15,7 @@ def delta_split_at_last(rootsys:rootSystem,index: int) -> bool:
 def delta_split_at_cofac(rootsys: rootSystem,index: int) -> bool:
     baseWord = rootsys.get_words(rootsys.delta)[index]
     cofacSplit = rootsys.costfac(baseWord)[0].height
-    for deltaWord in rootsys.get_affine_words(rootsys.delta)[index+rootsys.n::rootsys.n]:
+    for deltaWord in rootsys.get_chain(rootsys.delta)[index+rootsys.n::rootsys.n]:
         parsed = rootsys.parse_to_delta_format(deltaWord)
         if(len(parsed) != 3):
             return False
@@ -24,7 +24,7 @@ def delta_split_at_cofac(rootsys: rootSystem,index: int) -> bool:
     return True
 
 def k3_start_delta_pattern(rootsys: rootSystem, index: int) ->bool:
-    deltaWords = rootsys.get_affine_words(rootsys.delta)[index::rootsys.n]
+    deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
     splitting = [i.no_commas() for i in rootsys.costfac(deltaWords[1])]
     if(len(rootsys.parse_to_delta_format(deltaWords[1])) != 1):
         return False
@@ -37,7 +37,7 @@ def k3_start_delta_pattern(rootsys: rootSystem, index: int) ->bool:
     return True
 
 def last_smallest_delta_pattern(rootsys:rootSystem, index: int) -> bool:
-    deltaWords = rootsys.get_affine_words(rootsys.delta)[index::rootsys.n]
+    deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
     for i in range(-1,-rootsys.deltaHeight-1,-1):
         if(deltaWords[0][i].rootIndex == rootsys.ordering[0].rootIndex):
             smallestIndex = rootsys.deltaHeight + i
@@ -51,7 +51,7 @@ def last_smallest_delta_pattern(rootsys:rootSystem, index: int) -> bool:
     return True
 
 def two_delta_words_delta_pattern(rootsys:rootSystem,index:int) -> bool:
-    deltaWords = rootsys.get_affine_words(rootsys.delta)[index+rootsys.n*2::rootsys.n]
+    deltaWords = rootsys.get_chain(rootsys.delta)[index+rootsys.n*2::rootsys.n]
     for deltaWord in deltaWords:
         parsed = rootsys.parse_to_delta_format(deltaWord)
         if(len(parsed) != 4):
@@ -169,7 +169,7 @@ def check_standard_fac_same(rootsys:rootSystem,k=2):
     baseFacs = [rootsys.standfac(i)[0] for i in rootsys.get_words(rootsys.delta)]
     for i in range(len(baseFacs)):
         others = [rootsys.standfac(i)[0] for i in 
-                  rootsys.get_affine_words(rootsys.delta)[i::len(baseFacs)]]
+                  rootsys.get_chain(rootsys.delta)[i::len(baseFacs)]]
         for o in others:
             if(not np.all(o.weights-(o.height//(rootsys.deltaHeight))*rootsys.delta== baseFacs[i].weights)):
                 return (str(rootsys.ordering),i,o.weights-(o.height//(rootsys.deltaHeight)),baseFacs[i].weights)

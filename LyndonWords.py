@@ -575,8 +575,9 @@ class rootSystem:
                 ret = self.__get_words(np.array(combination, dtype=int))
             return ret
         return []
-    def get_affine_words(self,weight):
+    def get_chain(self,weight,min_delta = 2):
         """Gets the string of word weight, weight+\delta \cdots for all generated words"""
+        self.generate_up_to_delta(min_delta)
         matches = []
         k=0
         newWord = self.__get_words(weight + k*self.delta)
@@ -662,7 +663,7 @@ class rootSystem:
         Used primarily for csv output"""
         returnarr = []
         for i in self.baseWeights:
-            returnarr.append(np.array(self.get_affine_words(i)))
+            returnarr.append(np.array(self.get_chain(i)))
         return np.array(returnarr)
     def get_monotonicity(self, weights,deltaIndex = 0):
         """Gets monotonicity of a chain of words
@@ -671,7 +672,8 @@ class rootSystem:
         = 0 not monotone
         > 0 increasing
         """
-        words = self.get_affine_words(weights)
+        self.generate_up_to_delta(2)
+        words = self.get_chain(weights)
         for j in range(1,len(words)):
             monotonicity = 0
             if(words[j-1] < words[j]):
@@ -1086,7 +1088,7 @@ class rootSystem:
         #TODO: Updated based on slightly different definition of periodicity
         factors = []
         self.generate_up_to_delta(kdelta)
-        for i in self.get_affine_words(simpleRoot):
+        for i in self.get_chain(simpleRoot):
             tempArr = []
             for k in self.costfac(i):
                 if(k is None):
