@@ -668,7 +668,7 @@ class rootSystem:
     def get_monotonicity(self, weights,deltaIndex = 0):
         """Gets monotonicity of a chain of words
         
-        <0 decreasing
+        < 0 decreasing
         = 0 not monotone
         > 0 increasing
         """
@@ -700,7 +700,7 @@ class rootSystem:
                 continue
             returnarr.append((self.__get_words(i)[0].weights,monotonicity))
         return np.array(returnarr, dtype=object)
-    def check_convexity(self,deltagen=0,word_convexity=False):
+    def check_convexity(self,deltagen=2,word_convexity=False):
         """Checks convexity on the rootsystem"""
         self.generate_up_to_delta(deltagen)
         for w in list(self.weightToWordDictionary.values()):
@@ -730,8 +730,10 @@ class rootSystem:
                                 rightWord = i
                                 leftWord = reword
                                 max_found = True
-                        if( (i < currentWord) != (i < reword)):
+                        if(max_found and 
+                           ((i < currentWord) != (i < reword))):
                             yield (currentWord,self.get_words(decomp[0])[0],self.get_words(decomp[1])[0])
+                            break
                 else:
                     leftWord = self.get_words(decomp[0])[0]
                     rightWord = self.get_words(decomp[1])[0]
