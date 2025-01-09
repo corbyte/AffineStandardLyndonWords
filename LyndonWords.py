@@ -1145,6 +1145,8 @@ class rootSystem:
         if(len(weights) != self.n+1):
             return False
         weights = np.array(weights,dtype=int)
+        if(min(weights) < 0 ):
+            return False
         weights -= ((sum(weights)-1)//self.deltaHeight) * self.delta
         return np.any(np.all(self.baseWeights[:] == weights,axis=1))
     def letter_list_to_weights(self,letterList):
