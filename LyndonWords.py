@@ -171,9 +171,9 @@ class rootSystem:
             return True
         weights = re.weights - (self.delta * re.weights[0])
         return np.dot(im.hs ,(self.sym_matrix @ weights[1:])) != 0
-    def split_e_bracket(self,imword,realword) -> bool:
+    def split_e_bracket(self,hs,realword) -> bool:
         weights = realword.weights - (self.delta * realword.weights[0])
-        return np.dot(imword.hs ,(self.sym_matrix @ weights[1:])) != 0
+        return np.dot(hs ,(self.sym_matrix @ weights[1:])) != 0
     def h_bracket(self,word:word) -> np.array:
         """Determines the bracketing of an imaginary word
         
@@ -721,7 +721,7 @@ class rootSystem:
                         reword = self.get_words(decomp[0])[0]
                     max_found = False
                     for i in self.get_words(imheight):
-                        if(not max_found and self.split_e_bracket(i,reword)):
+                        if(not max_found and self.split_e_bracket(i.hs,reword)):
                             if(leftim):
                                 leftWord = i
                                 rightWord = reword
@@ -1065,7 +1065,7 @@ class rootSystem:
                     imweight = r
                     realword = self.get_words(r)[0]
                 for imword in self.get_words(imweight):
-                    if(self.split_e_bracket(imword,realword)):
+                    if(self.split_e_bracket(imword.hs,realword)):
                         if(word.letter_list_cmp(imword.string,realword.string) > 0):
                             if(word.letter_list_cmp(imword.string,minword.string) < 0):
                                 minword = imword
@@ -1157,5 +1157,5 @@ class rootSystem:
         word = self.get_words(weight)[0]
         imwords = self.get_words(self.delta * n)
         for w in imwords:
-            if(self.split_e_bracket(w,word)):
+            if(self.split_e_bracket(w.hs,word)):
                 return w

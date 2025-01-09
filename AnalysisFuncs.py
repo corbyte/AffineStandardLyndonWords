@@ -1,6 +1,25 @@
 from LyndonWords import *
-import LyndonWords
 
+def standard_delta_pattern(rootsys:rootSystem,index:int) -> bool:
+    baseWord = rootsys.get_words(rootsys.delta)[index]
+    deltaWords = rootsys.get_chain(rootsys.delta)[index + rootsys.n::rootsys.n]
+    leftstand,rightstand = rootsys.standfac(baseWord)
+    ell = rootsys.get_max_im_word(leftstand.weights)
+    imwords = rootsys.get_words(rootsys.delta)
+    for ellindex in range(len(imwords)):
+        if imwords[ellindex] == ell:
+            break
+    for deltaWord in deltaWords:
+        parsed = rootsys.parse_to_delta_format(deltaWord)
+        if(len(parsed) != 3):
+            return False
+        if(parsed[0] != leftstand.no_commas()):
+            return False
+        if(parsed[1][0] != ellindex + 1):
+            return False
+        if(parsed[2] != rightstand.no_commas()):
+            return False
+    return True
 def delta_split_at_last(rootsys:rootSystem,index: int) -> bool:
     baseWord = rootsys.get_words(rootsys.delta)[index]
     deltaWords = rootsys.get_chain(rootsys.delta)[index + rootsys.n::rootsys.n]
@@ -80,7 +99,7 @@ class deltaTypesCollection:
         for i in self.deltaTypes:
             retstr+= f"{i.index},[{' '.join([str(j) for j in i.hs])}],{i.type},{i.insertedIndex},{i.leftfac},{i.rightfac}\n"
         return retstr
-    def not_all_last(self) -> bool:
+    def not_all_standard(self) -> bool:
         for i in self.deltaTypes:
             if i.type != "last":
                 return True
@@ -97,16 +116,16 @@ def generate_delta_types(rootsys,k=3) ->deltaTypesCollection:
             if(type(j) is not str):
                 splitting = j[0]
                 break
-        if(delta_split_at_last(rootsys,i)):
-            breakType = "last"
+        if(standard_delta_pattern(rootsys,i)):
+            breakType = "standard"
         elif(delta_split_at_cofac(rootsys,i)):
             breakType = "cofac"
         elif(k3_start_delta_pattern(rootsys,i)):
             breakType = "k3start"
-        elif(last_smallest_delta_pattern(rootsys,i)):
-            breakType = "lastSmallest"
-        elif(two_delta_words_delta_pattern(rootsys,i)):
-            breakType = "twoDeltaWords"
+        #elif(last_smallest_delta_pattern(rootsys,i)):
+        #   breakType = "lastSmallest"
+        #elif(two_delta_words_delta_pattern(rootsys,i)):
+        #    breakType = "twoDeltaWords"
         else:
             breakType = "other"
         factors = rootsys.costfac(deltaWords[i])
