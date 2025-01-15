@@ -201,6 +201,7 @@ class MaxPeriodicityReturn:
 def max_periodicity_rootSystem(rootsys:rootSystem):
     max = 0
     for i in rootsys.baseWeights[:-1]:
+        print(i)
         res = rootsys.get_periodicity(i)
         if(res > max):
             max = res

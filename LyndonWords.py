@@ -1081,51 +1081,31 @@ class rootSystem:
                 if(word.letter_list_cmp(rword.string,minword.string) < 0):
                     minword = rword
         return minword
+    def __count_chain(parsed_delta_format):
+        count = 0
+        for i in parsed_delta_format:
+            if(not isinstance(i,str)):
+                count += 1
+        return count
+        
     def get_periodicity(self, simpleRoot,slIndex:int = 0,kdelta:int = 3) -> int:
         """Returns the periodicity of a simple root in a rootsystem
         
         slIndex -- used in imaginary words
         kdelta -- the min height to look at
         """
-        #TODO: Updated based on slightly different definition of periodicity
-        factors = []
         self.generate_up_to_delta(kdelta)
-        for i in self.get_chain(simpleRoot):
-            tempArr = []
-            for k in self.costfac(i):
-                if(k is None):
-                    tempArr.append([np.zeros(len(i),dtype=int),0])
-                else:
-                    tempArr.append([k.weights - (k.height//self.deltaHeight)*self.delta,k.height//self.deltaHeight])
-            factors.append(tempArr)
-        repeat = 1
-        if(self.is_imaginary_height(sum(simpleRoot))):
-            repeat = self.n
-        strings = factors[slIndex::repeat]
         while True:
-            for width in range(1,len(strings)//2):
-                for windowStart in range(1,(len(strings)-3*width)):
-                    countEqual = 0
-                    for i in range(width):
-                        arr1 = np.array([strings[windowStart+i + width*j][0][0] for j in range((len(strings)-(windowStart+i))//width)])
-                        arr2 = np.array([strings[windowStart+i + width*j][1][0] for j in range((len(strings)-(windowStart+i))//width)])
-                        if (arr1 == arr1[0]).all() and (arr2 == arr2[0]).all():
-                            countEqual+= 1
-                        else:
-                            break
-                    if(countEqual == width):
-                        return width
-            added = 3
-            for i in range(added):
-                kdelta+=1
-                w = self.get_words(simpleRoot + self.delta*kdelta)[slIndex]
-                tempArr = []
-                for k in self.costfac(w):
-                    if(k is None):
-                        tempArr.append([np.zeros(len(i),dtype=int),0])
-                    else:
-                        tempArr.append([k.weights - (k.height//self.deltaHeight)*self.delta,k.height//self.deltaHeight])
-                strings.append(tempArr)
+            chain = self.get_chain(simpleRoot)
+            topchain = rootSystem.__count_chain(self.parse_to_delta_format(chain[-1]))
+            secondchain = rootSystem.__count_chain(self.parse_to_delta_format(chain[-2]))
+            if(topchain == 0 or secondchain == 0):
+                self.generate_up_to_delta((chain[-1].height // self.deltaHeight) + 2)
+                continue
+            if(topchain == secondchain):
+                return topchain
+            self.generate_up_to_delta((chain[-1].height // self.deltaHeight) + 2)
+            
     def generate_up_to_height(self,height:int):
         """Generate all words in the rootsystem upto a certain height"""
         k=0
