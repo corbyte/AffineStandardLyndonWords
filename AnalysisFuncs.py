@@ -207,6 +207,18 @@ def max_periodicity_rootSystem(rootsys:rootSystem):
             max = res
             maxRoot = i
     return MaxPeriodicityReturn(max,maxRoot,str(rootsys.ordering))
+def check_basic_periodicity(rootSys:rootSystem,k=2):
+    imwords = rootSys.get_words(rootSys.delta)
+    imfacs = [rootSys.costfac(i)[0] for i in imwords] + [rootSys.costfac(i)[1] for i in imwords]
+    for i in rootSys.baseWeights:
+        if(len(rootSys.get_words(i+k*rootSys.delta)[0]) == 2):
+            flag = False
+            for imfac in imfacs:
+                if(imfac == rootSys.get_words(i)[0]):
+                    flag = True
+                    break
+            if(not flag):
+                return i
 class monotone_return_class:
     def __init__(self,truthValue,rootsysorder="",base="",monotone="",conj_monotone=""):
         self.truthValue = truthValue

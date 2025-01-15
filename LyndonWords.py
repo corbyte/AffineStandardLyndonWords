@@ -69,11 +69,16 @@ class word:
     def letter_list_cmp(first,second):
         """comparision method for two words
         
-        If result is 
+        If result is:
+        
             2, then first > second and second is not a substring of first
+            
             1, then first > second and second is a substring of first
+            
             0, then first is equal to second
+            
             -1, then first < second and first is a substring of second
+            
             -2, then first < second and first is not a substring of second
         """
         lFirst = len(first)
