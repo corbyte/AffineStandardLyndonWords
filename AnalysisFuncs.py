@@ -4,56 +4,37 @@ def standard_delta_pattern(rootsys:rootSystem,index:int) -> bool:
     baseWord = rootsys.get_words(rootsys.delta)[index]
     deltaWords = rootsys.get_chain(rootsys.delta)[index + rootsys.n::rootsys.n]
     leftstand,rightstand = rootsys.standfac(baseWord)
-    ell = rootsys.get_max_im_word(leftstand.weights)
+    ell = rootsys.max_im_word(leftstand.weights)
     imwords = rootsys.get_words(rootsys.delta)
     for ellindex in range(len(imwords)):
         if imwords[ellindex] == ell:
             break
     for deltaWord in deltaWords:
-        parsed = rootsys.parse_to_delta_format(deltaWord)
+        parsed = rootsys.parse_to_block_format(deltaWord,include_flipped=False)
         if(len(parsed) != 3):
             return False
-        if(parsed[0] != leftstand.no_commas()):
+        if(word.letter_list_cmp(parsed[0].get_letter_arr(), leftstand.string) != 0):
             return False
-        if(parsed[1][0] != ellindex + 1):
+        if(parsed[1].get_index() != ellindex + 1):
             return False
-        if(parsed[2] != rightstand.no_commas()):
-            return False
-    return True
-def delta_split_at_last(rootsys:rootSystem,index: int) -> bool:
-    baseWord = rootsys.get_words(rootsys.delta)[index]
-    deltaWords = rootsys.get_chain(rootsys.delta)[index + rootsys.n::rootsys.n]
-    for deltaWord in deltaWords:
-        parsed = rootsys.parse_to_delta_format(deltaWord)
-        if(len(parsed) != 3):
-            return False
-        if(parsed[2] != str(baseWord[-1])):
+        if(word.letter_list_cmp(parsed[2].get_letter_arr(), rightstand) != 0):
             return False
     return True
 
-def delta_split_at_cofac(rootsys: rootSystem,index: int) -> bool:
-    baseWord = rootsys.get_words(rootsys.delta)[index]
-    cofacSplit = rootsys.costfac(baseWord)[0].height
-    for deltaWord in rootsys.get_chain(rootsys.delta)[index+rootsys.n::rootsys.n]:
-        parsed = rootsys.parse_to_delta_format(deltaWord)
-        if(len(parsed) != 3):
-            return False
-        if(parsed[0] != baseWord.no_commas()[:cofacSplit] or parsed[2] != baseWord.no_commas()[cofacSplit:]):
-            return False
-    return True
-
-def k3_start_delta_pattern(rootsys: rootSystem, index: int) ->bool:
+def flipped_delta_pattern(rootsys: rootSystem, index: int) ->bool:
     deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
-    splitting = [i.no_commas() for i in rootsys.costfac(deltaWords[1])]
-    if(len(rootsys.parse_to_delta_format(deltaWords[1])) != 1):
-        return False
+    leftFac,rightFac = rootsys.standfac(deltaWords[0])
     for i in deltaWords[2:]:
-        parsed = rootsys.parse_to_delta_format(i)
-        if(len(parsed) != 3):
+        if(word.letter_list_cmp(i[:len(leftFac)],leftFac.string) != 0):
             return False
-        if(parsed[0] != splitting[0] or parsed[2] != splitting[1] or type(parsed[1]) is not list):
+        parsed_form = rootsys.parse_to_block_format(i[len(leftFac):],include_delta=False)
+        if(len(parsed_form) != 2):
             return False
-    return True
+        if(word.letter_list_cmp(parsed_form[1].get_letter_arr(), rightFac.string) != 0):
+            return False
+        if(parsed_form[0].get_type() != 'fim'):
+            return False
+    return True 
 
 def last_smallest_delta_pattern(rootsys:rootSystem, index: int) -> bool:
     deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
@@ -118,17 +99,17 @@ def generate_delta_types(rootsys,k=3) ->deltaTypesCollection:
                 break
         if(standard_delta_pattern(rootsys,i)):
             breakType = "standard"
-        elif(delta_split_at_cofac(rootsys,i)):
-            breakType = "cofac"
-        elif(k3_start_delta_pattern(rootsys,i)):
-            breakType = "k3start"
+        elif(flipped_delta_pattern(rootsys,i)):
+            breakType = "flipped"
+        #elif(delta_split_at_cofac(rootsys,i)):
+        #    breakType = "cofac"
         #elif(last_smallest_delta_pattern(rootsys,i)):
         #   breakType = "lastSmallest"
         #elif(two_delta_words_delta_pattern(rootsys,i)):
         #    breakType = "twoDeltaWords"
         else:
             breakType = "other"
-        factors = rootsys.costfac(deltaWords[i])
+        factors = rootsys.standfac(deltaWords[i])
         listOfDeltaTypes.append(deltaTypes(i+1,deltaWords[i].hs,breakType,splitting,factors[0].no_commas(),factors[1].no_commas()))
     return deltaTypesCollection(rootsys,listOfDeltaTypes)
 def costfac_delta_type_conditions_met(rootsys:rootSystem,deltaWords,index):
@@ -156,7 +137,7 @@ def last_split_delta_type_conditions_met(rootsys:rootSystem,deltaWords:list,inde
         if(word.letter_list_cmp(rootsys.costfac(deltaWord)[1].string,rightfac.string[:-1]) == 0):
             return True
     return False
-def k3_start_delta_type_conditions_met(rootsys:rootSystem,index:int) -> bool:
+def flipped_delta_type_conditions_met(rootsys:rootSystem,index:int) -> bool:
     SLi = rootsys.get_words(rootsys.delta)[index]
     lastLetterIndex = SLi[-1].rootIndex
     SLprime = np.copy(rootsys.delta)
@@ -169,6 +150,7 @@ def k3_start_delta_type_conditions_met(rootsys:rootSystem,index:int) -> bool:
             return False
     return True
 def check_delta_type_prediction(rootsys:rootSystem,k=2):
+    #Depreciated
     result = generate_delta_types(rootsys,k)
     deltaWords = rootsys.get_words(rootsys.delta)
     for i in range(len(result.deltaTypes)):
@@ -176,8 +158,8 @@ def check_delta_type_prediction(rootsys:rootSystem,k=2):
             yield (rootsys.type, str(rootsys.ordering),i+1,result.deltaTypes[i].type,"cofac")
         #if((result.deltaTypes[i].type == "last") != lastSplitDeltaTypeConditionsMet(rootsys,deltaWords,i)):
         #    exceptions.append((rootsys.type, str(rootsys.ordering),i+1,result.deltaTypes[i].type,"last"))
-        if((result.deltaTypes[i].type == "k3start") != k3_start_delta_type_conditions_met(rootsys,i)):
-           yield (rootsys.type, str(rootsys.ordering),i+1,result.deltaTypes[i].type,"k3start") 
+        if((result.deltaTypes[i].type == "flipped") != flipped_delta_type_conditions_met(rootsys,i)):
+           yield (rootsys.type, str(rootsys.ordering),i+1,result.deltaTypes[i].type,"flipped") 
 def check_delta_type_prediction_perms(rootsystems,k=2):
     rootsys:rootSystem
     for rootsys in rootsystems:

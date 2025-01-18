@@ -1,30 +1,30 @@
 import numpy as np
 class letter:
     """Class for letters of words"""
-    index:int
+    order_index:int
     rootIndex:int
     def __init__(self,rootIndex:int=0):
         self.rootIndex = rootIndex
     def set_index(self, i:int):
-        self.index = i
+        self.order_index = i
     def __str__(self):
         return str(self.rootIndex)
     def __lt__(self, other):
-        return self.index < other.index
+        return self.order_index < other.order_index
     def __eq__(self,other):
         if not isinstance(other,self.__class__):
             return NotImplemented
-        return self.index == other.index
+        return self.order_index == other.order_index
     def __gt__(self,other):
-        return self.index > other.index
+        return self.order_index > other.order_index
     def __ne__(self,other):
-        return not (self.index == other.index)
+        return not (self.order_index == other.order_index)
     def __hash__(self):
         return hash(self.rootIndex)
     def __le__(self, other):
-        return self.index <= other.index
+        return self.order_index <= other.order_index
     def __ge__(self,other):
-        return self.index >= other.index
+        return self.order_index >= other.order_index
 class word:
     """Class for words, as a string of letters"""
     def __init__(self, wordArray,weights):
@@ -90,9 +90,9 @@ class word:
         for i in range(minLen):
             if(type(first[i])is not letter or type(second[i]) is not letter):
                 raise ValueError("List contains non-letter object")
-            if(first[i].index > second[i].index):
+            if(first[i].order_index > second[i].order_index):
                 return 2
-            if(first[i].index < second[i].index):
+            if(first[i].order_index < second[i].order_index):
                 return -2
         if(lFirst < lSecond):
             return -1
@@ -120,13 +120,50 @@ class word:
                     return []
                 return first[:i]
         return first[:minlen]
+class parseblock:
+    def __init__(self,wordArray,blocktype:{'word','im','fim'},index = 0,repeat=1):
+        self.__letter_arr = np.array(wordArray,dtype=object)
+        self.__type = blocktype
+        self.__repeat = repeat
+        self.__index = index
+    def __getitem__(self,i):
+        return self.__letter_arr[i]
+    def get_letter_arr(self):
+        return self.__letter_arr
+    def get_type(self):
+        return self.__type
+    def get_repeat(self):
+        return self.__repeat
+    def get_index(self):
+        return self.__index
+    def increment_repeat(self):
+        self.__repeat += 1
+    def __str__(self):
+        if self.__type == 'word':
+            return str(''.join([str(i) for i in self.__letter_arr]))
+        if self.__type == 'im':
+            return str(f"[im,{self.__index},{self.__repeat}]")
+        if self.__type == 'fim':
+            return str(f"[fim,{self.__index},{self.__repeat}]")
+    def __len__(self):
+        return self.__letter_arr.size
+class parseblockchain:
+    def __init__(self,parseblocks):
+        self.__parseblocks = np.empty(len(parseblocks),dtype=object)
+        self.__parseblocks[:] = parseblocks[:]
+    def __str__(self):
+        return str(' '.join([str(i) for i in self.__parseblocks]))
+    def __len__(self):
+        return len(self.__parseblocks)
+    def __getitem__(self,i):
+        return self.__parseblocks[i]
 class letterOrdering:
     """Class used to contain the ordering of letters in a RootSystem"""
     def __init__(self, letterOrdering):
         letterOrdering = [letter(i) for i in letterOrdering]
         self.order:list[letter] = letterOrdering
         for i in range(len(letterOrdering)):
-            self.order[i].index = i
+            self.order[i].order_index = i
     def __len__(self):
         return len(self.order)
     def __getitem__(self,index) -> letter:
@@ -254,6 +291,7 @@ class rootSystem:
         self.vectors_norm2 = rootSystem.basis_vector_norm2(self.type,self.n)
         self.sym_matrix = self.get_sym_matrix()
         self._maxWord:word  = self.get_words(weightsGeneration(self.ordering[-1]))[0]
+        self.__flipped_im_words = None
     def get_base_weights(type,n):
         """Returns roots of height <= delta for a certain type and n"""
         if(type == 'A'):
@@ -524,14 +562,14 @@ class rootSystem:
         weight[wordToFactor.string[0].rootIndex] += 1
         for i in range(1,wordToFactor.height):
             weight[wordToFactor.string[i-1].rootIndex] -= 1
-            if(wordToFactor.string[i].index != splitLetter.index):
+            if(wordToFactor.string[i].order_index != splitLetter.order_index):
                 continue
             rightWords = self.__get_words(weight)
             rightWord = None
             for rWord in rightWords:
                 flag = True
                 for j in range(sum(weight)):
-                    if(rWord.string[j].index != wordToFactor.string[i+j].index):
+                    if(rWord.string[j].order_index != wordToFactor.string[i+j].order_index):
                         flag=False
                         break
                 if(flag):
@@ -544,7 +582,7 @@ class rootSystem:
             for lWord in leftWords:
                 flag = True
                 for j in range(lWord.height):
-                    if(lWord.string[j].index != wordToFactor.string[j].index):
+                    if(lWord.string[j].order_index != wordToFactor.string[j].order_index):
                         flag=False
                         break
                 if(flag):
@@ -661,6 +699,13 @@ class rootSystem:
                     liPotentialOptions.append(potentialOptions[index])
                     row+=1
                 index += 1
+            if(weight == self.deltaHeight):
+                self.__flipped_im_words = []
+                for i in liPotentialOptions:
+                    for j in range(1,self.deltaHeight):
+                        if(i[j].order_index == 0):
+                            self.__flipped_im_words.append(word(list(i[j:]) + list(i[:j]),weights=self.delta))
+                            break
             self.weightToWordDictionary[combinations.tobytes()] = liPotentialOptions
     def get_words_by_base(self):
         """Gets words grouped together by base word
@@ -976,6 +1021,7 @@ class rootSystem:
         
         The first number of the tuple represents i and the second,
         the number of times it occurs in a row
+        Want to fix to instead of a string it retuns a list of word objects with dleta parts
         """
         retarr = []
         deltaWords = self.__get_words(self.delta)
@@ -1003,6 +1049,42 @@ class rootSystem:
         if(len(string) > 0): 
             retarr.append(string)
         return retarr
+    def parse_to_block_format(self,parseWord,include_delta=True,include_flipped=True,include_random_rotation=True) ->parseblockchain:
+        parsed_arr = []
+        deltaWords = self.__get_words(self.delta)
+        flippedDeltaWords = self.get_flipped_im_words()
+        stack = []
+        stackweight = np.zeros(self.n+1)
+        for letter in parseWord:
+            stack.append(letter)
+            if(len(stack) >= self.deltaHeight):
+                if(include_delta):
+                    for i in range(len(deltaWords)):
+                        deltaWord = deltaWords[i]
+                        if(word.letter_list_cmp(deltaWord.string,stack[-self.deltaHeight:]) == 0):
+                            if(len(stack) > self.deltaHeight):
+                                parsed_arr.append(parseblock(stack[:-self.deltaHeight],'word'))
+                            if(len(parsed_arr) > 0 and parsed_arr[-1].get_type() == 'im' and parsed_arr[-1].get_index() == i+1):
+                                parsed_arr[-1].increment_repeat()
+                            else:
+                                parsed_arr.append(parseblock(deltaWord.string,'im',i+1))
+                            stack = []
+                            break
+                if(include_flipped):
+                    for i in range(len(flippedDeltaWords)):
+                        flippedDeltaWord = flippedDeltaWords[i]
+                        if(word.letter_list_cmp(flippedDeltaWord.string,stack[-self.deltaHeight:]) == 0):
+                            if(len(stack) > self.deltaHeight):
+                                parsed_arr.append(parseblock(stack[:-self.deltaHeight],'word'))
+                            if(len(parsed_arr) > 0 and parsed_arr[-1].get_type() == 'fim' and parsed_arr[-1].get_index() == i+1):
+                                parsed_arr[-1].increment_repeat()
+                            else:
+                                parsed_arr.append(parseblock(flippedDeltaWord.string,'fim',i+1))
+                            stack = []
+                            break
+        if(len(stack) > 0): 
+            parsed_arr.append(parseblock(stack,'word'))
+        return parseblockchain(parsed_arr)
     def get_cartan_matrix(type:str,n:int):
         """returns the cartan matrix for a give type and n"""
         if(n <= 0):
@@ -1140,9 +1222,23 @@ class rootSystem:
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
-    def get_max_im_word(self,weight,n=1):
+    def max_im_word(self,weight,n=1):
         word = self.get_words(weight)[0]
         imwords = self.get_words(self.delta * n)
         for w in imwords:
             if(self.split_e_bracket(w.hs,word)):
                 return w
+    def max_flipped_im_word(self,weight,n=1):
+        word = self.get_words(weight)[0]
+        imwords = self.get_words(self.delta * n)
+        maxflip = self.minWord
+        for w in imwords:
+            if(not self.split_e_bracket(w.hs,word)):
+                continue
+            if(self.costfac(w)[1] > maxflip):
+                maxflip = w
+        return maxflip
+    def get_flipped_im_words(self):
+        if(self.__flipped_im_words is None):
+            self.generate_up_to_delta(1)
+        return self.__flipped_im_words
