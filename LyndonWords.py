@@ -121,11 +121,12 @@ class word:
                 return first[:i]
         return first[:minlen]
 class parseblock:
-    def __init__(self,wordArray,blocktype:{'word','im','fim'},index = 0,repeat=1):
+    def __init__(self,wordArray,blocktype:{'word','im','fim'},index = 0,repeat=1,perm_index=0):
         self.__letter_arr = np.array(wordArray,dtype=object)
         self.__type = blocktype
         self.__repeat = repeat
         self.__index = index
+        self.__perm_index = perm_index
     def __getitem__(self,i):
         return self.__letter_arr[i]
     def get_letter_arr(self):
@@ -136,6 +137,8 @@ class parseblock:
         return self.__repeat
     def get_index(self):
         return self.__index
+    def get_perm_index(self):
+        return self.__perm_index
     def increment_repeat(self):
         self.__repeat += 1
     def __str__(self):
@@ -145,6 +148,8 @@ class parseblock:
             return str(f"[im,{self.__index},{self.__repeat}]")
         if self.__type == 'fim':
             return str(f"[fim,{self.__index},{self.__repeat}]")
+        if self.__type == 'pim':
+            return str(f"[{self.__index},{self.__perm_index},{self.__repeat}]")
     def __len__(self):
         return self.__letter_arr.size
 class parseblockchain:
@@ -1054,9 +1059,33 @@ class rootSystem:
         deltaWords = self.__get_words(self.delta)
         flippedDeltaWords = self.get_flipped_im_words()
         stack = []
-        stackweight = np.zeros(self.n+1)
+        stackweight = np.zeros(self.n+1,dtype=int)
         for letter in parseWord:
             stack.append(letter)
+            stackweight[letter.rootIndex] += 1
+            if(len(stack) >= self.deltaHeight):
+                if(len(stack) > self.deltaHeight):
+                    stackweight[stack[-(self.deltaHeight+1)].rootIndex] -= 1
+                if(np.all(stackweight == self.delta)):
+                    for i in range(len(deltaWords)):
+                        deltaWord = deltaWords[i]
+                        flag = False
+                        for j in range(self.deltaHeight):
+                            if(stack[-self.deltaHeight] == deltaWord[j]):
+                                flippedWord = list(deltaWord[j:]) + list(deltaWord[:j])
+                                if(word.letter_list_cmp(flippedWord,stack[-self.deltaHeight:]) == 0):
+                                    if(len(stack) > self.deltaHeight):
+                                        parsed_arr.append(parseblock(stack[:-self.deltaHeight],'word'))
+                                    if(len(parsed_arr) > 0 and parsed_arr[-1].get_type() == 'pim' and parsed_arr[-1].get_index() == i+1 and parsed_arr[-1].get_perm_index() == j):
+                                        parsed_arr[-1].increment_repeat()
+                                    else:
+                                        parsed_arr.append(parseblock(deltaWord.string,'pim',i+1,perm_index=j))
+                                    stack = []
+                                    stackweight[:] = 0
+                                    flag = True
+                                    break
+                        if(flag):
+                            break
             if(len(stack) >= self.deltaHeight):
                 if(include_delta):
                     for i in range(len(deltaWords)):

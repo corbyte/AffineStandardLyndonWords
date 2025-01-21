@@ -36,6 +36,21 @@ def flipped_delta_pattern(rootsys: rootSystem, index: int) ->bool:
             return False
     return True 
 
+def definitive_delta_pattern(rootsys: rootSystem, index: int)-> bool:
+    deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
+    leftFac,rightFac = rootsys.standfac(deltaWords[0])
+    for i in deltaWords[2:]:
+        if(word.letter_list_cmp(i[:len(leftFac)],leftFac.string) != 0):
+            return False
+        parsed_form = rootsys.parse_to_block_format(i[len(leftFac):])
+        if(len(parsed_form) != 2):
+            return False
+        if(word.letter_list_cmp(parsed_form[1].get_letter_arr(), rightFac.string) != 0):
+            return False
+        if(parsed_form[0].get_type() != 'pim'):
+            return False
+    return True 
+
 def last_smallest_delta_pattern(rootsys:rootSystem, index: int) -> bool:
     deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
     for i in range(-1,-rootsys.deltaHeight-1,-1):
@@ -97,10 +112,12 @@ def generate_delta_types(rootsys,k=3) ->deltaTypesCollection:
             if(type(j) is not str):
                 splitting = j[0]
                 break
-        if(standard_delta_pattern(rootsys,i)):
-            breakType = "standard"
-        elif(flipped_delta_pattern(rootsys,i)):
-            breakType = "flipped"
+        if(definitive_delta_pattern(rootsys,i)):
+            breakType = 'definitive'
+        #elif(standard_delta_pattern(rootsys,i)):
+        #    breakType = "standard"
+        #elif(flipped_delta_pattern(rootsys,i)):
+        #    breakType = "flipped"
         #elif(delta_split_at_cofac(rootsys,i)):
         #    breakType = "cofac"
         #elif(last_smallest_delta_pattern(rootsys,i)):
