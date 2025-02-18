@@ -1,4 +1,5 @@
 import numpy as np
+from  functools import cmp_to_key
 class letter:
     """Class for letters of words"""
     order_index:int
@@ -1251,6 +1252,42 @@ class rootSystem:
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
+    def get_convex_set(self,weight,k=1):
+        word = self.get_words(weight)[0]
+        imwords = self.get_words(self.delta*k)
+        reducedweight = (weight-self.delta*weight[0])[1:]
+        arr = []
+        spanset = np.zeros((self.n+1,self.n),dtype=int)
+        spanset[-1] = reducedweight
+        i=0
+        for w in imwords:
+            if(self.split_e_bracket(w.hs,word)):
+                arr.append(w)
+            spanset[i] = w.hs
+            if(np.linalg.matrix_rank(spanset) < i+1):
+                return arr
+            i+=1
+        return arr
+    def W_set_compare(element1,element2):
+        if(word.letter_list_cmp(element1[0] + element1[1],
+                                element2[0] + element2[1]) == 0):
+            return len(element1[0]) - len(element2[0])
+        return -word.letter_list_cmp(element1[0] + element1[1],
+                                element2[0] + element2[1])
+            
+    def get_W_set(self,k=1):
+        decomps = self.get_decompositions(self.delta*k)
+        unsortedW = []
+        for d in decomps:
+            for i in self.get_words(d[0]):
+                for j in self.get_words(d[1]):
+                    if i < j:
+                        unsortedW.append((i,j))
+        return sorted(unsortedW,key=cmp_to_key(rootSystem.W_set_compare))
+    def get_print_W_set(self,k=1):
+        w_set = self.get_W_set(k)
+        return [(i[0].no_commas(),i[1].no_commas()) for i in w_set]
+            
     def max_im_word(self,weight,n=1):
         word = self.get_words(weight)[0]
         imwords = self.get_words(self.delta * n)
