@@ -94,10 +94,10 @@ class deltaTypesCollection:
             if i.type != "last":
                 return True
         return False
-def generate_delta_types(rootsys,k=3) ->deltaTypesCollection:
-    deltaWords = rootsys.get_words(rootsys.delta)
+def generate_delta_types(rootsys:rootSystem,k=3) ->deltaTypesCollection:
+    deltaWords = rootsys.SL(rootsys.delta)
     listOfDeltaTypes = []
-    kdeltaWords = rootsys.get_words(rootsys.delta*k)
+    kdeltaWords = rootsys.SL(rootsys.delta*k)
     for i in range(rootsys.n):
         kdeltaWord = kdeltaWords[i]
         splitting = 0
@@ -133,7 +133,7 @@ def costfac_delta_type_conditions_met(rootsys:rootSystem,deltaWords,index):
             break
     minusarr = np.zeros(rootsys.n+1,dtype=int)
     minusarr[deltaWords[index][-1].rootIndex] += 1
-    if(word.letter_list_cmp(rootsys.get_words(rootsys.delta - minusarr)[0].string,deltaWords[index][:-1]) != 0):
+    if(word.letter_list_cmp(rootsys.SL(rootsys.delta - minusarr)[0].string,deltaWords[index][:-1]) != 0):
         return True
     for j in range(index):
         if(word.letter_list_cmp(rootsys.costfac(deltaWords[j])[0].string,
@@ -149,11 +149,11 @@ def last_split_delta_type_conditions_met(rootsys:rootSystem,deltaWords:list,inde
             return True
     return False
 def flipped_delta_type_conditions_met(rootsys:rootSystem,index:int) -> bool:
-    SLi = rootsys.get_words(rootsys.delta)[index]
+    SLi = rootsys.SL(rootsys.delta)[index]
     lastLetterIndex = SLi[-1].rootIndex
     SLprime = np.copy(rootsys.delta)
     SLprime[lastLetterIndex] -= 1
-    if(word.letter_list_cmp(SLi[:-1],rootsys.get_words(SLprime)[0].string)==0):
+    if(word.letter_list_cmp(SLi[:-1],rootsys.SL(SLprime)[0].string)==0):
         return False
     leftfac,rightfac = rootsys.costfac(SLi)
     for i in range(len(rightfac)-1):
@@ -163,7 +163,7 @@ def flipped_delta_type_conditions_met(rootsys:rootSystem,index:int) -> bool:
 def check_delta_type_prediction(rootsys:rootSystem,k=2):
     #Depreciated
     result = generate_delta_types(rootsys,k)
-    deltaWords = rootsys.get_words(rootsys.delta)
+    deltaWords = rootsys.SL(rootsys.delta)
     for i in range(len(result.deltaTypes)):
         if((result.deltaTypes[i].type == "cofac") != costfac_delta_type_conditions_met(rootsys,deltaWords,i)):
             yield (rootsys.type, str(rootsys.ordering),i+1,result.deltaTypes[i].type,"cofac")
@@ -178,7 +178,7 @@ def check_delta_type_prediction_perms(rootsystems,k=2):
             yield i
 def check_standard_fac_same(rootsys:rootSystem,k=2):
     rootsys.generate_up_to_delta(k)
-    baseFacs = [rootsys.standfac(i)[0] for i in rootsys.get_words(rootsys.delta)]
+    baseFacs = [rootsys.standfac(i)[0] for i in rootsys.SL(rootsys.delta)]
     for i in range(len(baseFacs)):
         others = [rootsys.standfac(i)[0] for i in 
                   rootsys.get_chain(rootsys.delta)[i::len(baseFacs)]]
@@ -201,13 +201,13 @@ def max_periodicity_rootSystem(rootsys:rootSystem):
             maxRoot = i
     return MaxPeriodicityReturn(max,maxRoot,str(rootsys.ordering))
 def check_basic_periodicity(rootSys:rootSystem,k=2):
-    imwords = rootSys.get_words(rootSys.delta)
+    imwords = rootSys.SL(rootSys.delta)
     imfacs = [rootSys.costfac(i)[0] for i in imwords] + [rootSys.costfac(i)[1] for i in imwords]
     for i in rootSys.baseWeights:
-        if(len(rootSys.get_words(i+k*rootSys.delta)[0]) == 2):
+        if(len(rootSys.SL(i+k*rootSys.delta)[0]) == 2):
             flag = False
             for imfac in imfacs:
-                if(imfac == rootSys.get_words(i)[0]):
+                if(imfac == rootSys.SL(i)[0]):
                     flag = True
                     break
             if(not flag):
@@ -224,9 +224,9 @@ class monotone_return_class:
 def monotonicity_conj(rootsys:rootSystem,k=3):
     rootsys.generate_up_to_delta(k)
     for base in rootsys.baseWeights[:-1]:
-        baseWord = rootsys.get_words(base)[0]
+        baseWord = rootsys.SL(base)[0]
         monotone = rootsys.get_monotonicity(base)
-        for i in rootsys.get_words(rootsys.delta):
+        for i in rootsys.SL(rootsys.delta):
             if(i <baseWord and rootsys.list_e_bracketing((i+ baseWord).string)):
                 conj_monotone = -1
                 break
@@ -248,7 +248,7 @@ def lca_on_critical_roots(rootSys:rootSystem,k=5):
     for kdelta in range(k+1):
         for baseWeight in rootSys.baseWeights[:-1]:
             criticalPairs = list(rootSys.realized_critical_roots(kdelta *rootSys.delta + baseWeight))
-            actual_word = rootSys.get_words(kdelta * rootSys.delta + baseWeight)[0]
+            actual_word = rootSys.SL(kdelta * rootSys.delta + baseWeight)[0]
             for j in range(len(criticalPairs)):
                 if(len(word.lca(actual_word,criticalPairs[j][0])) < len(criticalPairs[j][1])):
                     if(word.letter_list_cmp(actual_word.string,list(criticalPairs[j][0].string) + list(criticalPairs[j][1].string)) == 0):

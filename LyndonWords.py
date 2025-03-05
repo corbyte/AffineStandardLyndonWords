@@ -294,7 +294,7 @@ class rootSystem:
         self.deltaHeight = sum(self.delta)
         self.vectors_norm2 = rootSystem.basis_vector_norm2(self.type,self.n)
         self.sym_matrix = self.get_sym_matrix()
-        self._maxWord:word  = self.get_words(weightsGeneration(self.ordering[-1]))[0]
+        self._maxWord:word  = self.SL(weightsGeneration(self.ordering[-1]))[0]
         self.__flipped_im_words = None
     def get_base_weights(type,n):
         """Returns roots of height <= delta for a certain type and n"""
@@ -613,7 +613,7 @@ class rootSystem:
     def __get_words(self, combination:np.array):
         """Gets all words corresponding to a certain root"""
         return self.weightToWordDictionary.get(combination.tobytes(),[])
-    def get_words(self, combination):
+    def SL(self, combination):
         """Gets all words corresponding to a certain root"""
         if(self.contains_weight(combination)):
             ret = self.__get_words(np.array(combination, dtype=int))
@@ -768,13 +768,13 @@ class rootSystem:
                     leftim = False
                     if(self.is_imaginary_height(sum(decomp[0]))):
                         imheight = decomp[0]
-                        reword = self.get_words(decomp[1])[0]
+                        reword = self.SL(decomp[1])[0]
                         leftim = True
                     else:
                         imheight = decomp[1]
-                        reword = self.get_words(decomp[0])[0]
+                        reword = self.SL(decomp[0])[0]
                     max_found = False
-                    for i in self.get_words(imheight):
+                    for i in self.SL(imheight):
                         if(not max_found and self.split_e_bracket(i.hs,reword)):
                             if(leftim):
                                 leftWord = i
@@ -786,17 +786,17 @@ class rootSystem:
                                 max_found = True
                         if(max_found and 
                            ((i < currentWord) != (i < reword))):
-                            yield (currentWord,self.get_words(decomp[0])[0],self.get_words(decomp[1])[0])
+                            yield (currentWord,self.SL(decomp[0])[0],self.SL(decomp[1])[0])
                             break
                 else:
-                    leftWord = self.get_words(decomp[0])[0]
-                    rightWord = self.get_words(decomp[1])[0]
+                    leftWord = self.SL(decomp[0])[0]
+                    rightWord = self.SL(decomp[1])[0]
                 if(leftWord > rightWord):
                     continue
                 if(leftWord > currentWord):
-                    yield (currentWord,self.get_words(decomp[0])[0],self.get_words(decomp[1])[0])
+                    yield (currentWord,self.SL(decomp[0])[0],self.SL(decomp[1])[0])
                 if(rightWord < currentWord):
-                    yield (currentWord,self.get_words(decomp[0])[0],self.get_words(decomp[1])[0])
+                    yield (currentWord,self.SL(decomp[0])[0],self.SL(decomp[1])[0])
     def __get_decompositions(self,weights):
         """Gets all decompositions of a word"""
         if(weights is not np.array):
@@ -860,8 +860,8 @@ class rootSystem:
             print(i)
     def realized_critical_roots(self,degree):
         for left,right in self.general_critical_roots(degree):
-            leftstrs = self.get_words(left)
-            rightstrs = self.get_words(right)
+            leftstrs = self.SL(left)
+            rightstrs = self.SL(right)
             for leftstr in leftstrs:
                 for rightstr in rightstrs:
                     temprightstr = rightstr.string
@@ -910,8 +910,8 @@ class rootSystem:
         return (modroot,deltamult)
     def get_critical_pairs(self,rootindex,k):
         for left in self.get_critical_roots(rootindex,k):
-            leftstr = self.get_words(left)[0]
-            rightstr = self.get_words(k*self.delta - left)[0]
+            leftstr = self.SL(left)[0]
+            rightstr = self.SL(k*self.delta - left)[0]
             if(len(rightstr) == 1
                or(word.letter_list_cmp(leftstr.string[:len(rightstr)-1],rightstr.string[:-1]) == 0
                   and rightstr > leftstr
@@ -1157,11 +1157,11 @@ class rootSystem:
             if(self.is_imaginary_height(sum(l)) or self.is_imaginary_height(sum(r))):
                 if(self.is_imaginary_height(sum(l))):
                     imweight = l
-                    realword = self.get_words(r)[0]
+                    realword = self.SL(r)[0]
                 else:
                     imweight = r
-                    realword = self.get_words(r)[0]
-                for imword in self.get_words(imweight):
+                    realword = self.SL(r)[0]
+                for imword in self.SL(imweight):
                     if(self.split_e_bracket(imword.hs,realword)):
                         if(word.letter_list_cmp(imword.string,realword.string) > 0):
                             if(word.letter_list_cmp(imword.string,minword.string) < 0):
@@ -1171,8 +1171,8 @@ class rootSystem:
                                 minword = realword
                         break
             else:
-                lword:word = self.get_words(l)[0]
-                rword:word = self.get_words(r)[0]
+                lword:word = self.SL(l)[0]
+                rword:word = self.SL(r)[0]
                 if(word.letter_list_cmp(lword.string,rword.string) >= 0):
                     continue
                 if(word.letter_list_cmp(rword.string,minword.string) < 0):
@@ -1233,8 +1233,8 @@ class rootSystem:
             arr[l.rootIndex] += 1
         return arr
     def get_imaginary_convex_set(self,weight,k=1):
-        word = self.get_words(weight)[0]
-        imwords = self.get_words(self.delta*k)
+        word = self.SL(weight)[0]
+        imwords = self.SL(self.delta*k)
         reducedweight = (weight-self.delta*weight[0])[1:]
         arr = []
         spanset = np.zeros((self.n+1,self.n),dtype=int)
@@ -1261,8 +1261,8 @@ class rootSystem:
         decomps = self.get_decompositions(self.delta*k)
         unsortedW = []
         for d in decomps:
-            for i in self.get_words(d[0]):
-                for j in self.get_words(d[1]):
+            for i in self.SL(d[0]):
+                for j in self.SL(d[1]):
                     if i < j:
                         unsortedW.append((i,j))
         return sorted(unsortedW,key=cmp_to_key(rootSystem.W_set_compare))
@@ -1271,14 +1271,14 @@ class rootSystem:
         return [(i[0].no_commas(),i[1].no_commas()) for i in w_set]
             
     def max_im_word(self,weight,n=1):
-        word = self.get_words(weight)[0]
-        imwords = self.get_words(self.delta * n)
+        word = self.SL(weight)[0]
+        imwords = self.SL(self.delta * n)
         for w in imwords:
             if(self.split_e_bracket(w.hs,word)):
                 return w
     def max_flipped_im_word(self,weight,n=1):
-        word = self.get_words(weight)[0]
-        imwords = self.get_words(self.delta * n)
+        word = self.SL(weight)[0]
+        imwords = self.SL(self.delta * n)
         maxflip = self.minWord
         for w in imwords:
             if(not self.split_e_bracket(w.hs,word)):

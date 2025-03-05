@@ -197,7 +197,7 @@ class TestStringMethods(unittest.TestCase):
         self.assertEqual(toSet(a),expected)
     def test_D_Affine_3(self):
         D4 = rootSystem([0,4,1,2,3],'D')
-        D4.get_words([2,2,5,2,3])
+        D4.SL([2,2,5,2,3])
     def test_F_Affine_1(self):
         arr = [1,2,3,4,0]
         r = rootSystem(arr,'F')
