@@ -1,25 +1,19 @@
 from LyndonWords import *
 
 def standard_delta_pattern(rootsys:rootSystem,index:int) -> bool:
-    baseWord = rootsys.get_words(rootsys.delta)[index]
-    deltaWords = rootsys.get_chain(rootsys.delta)[index + rootsys.n::rootsys.n]
-    leftstand,rightstand = rootsys.standfac(baseWord)
-    ell = rootsys.max_im_word(leftstand.weights)
-    imwords = rootsys.get_words(rootsys.delta)
-    for ellindex in range(len(imwords)):
-        if imwords[ellindex] == ell:
-            break
-    for deltaWord in deltaWords:
-        parsed = rootsys.parse_to_block_format(deltaWord,include_flipped=False)
-        if(len(parsed) != 3):
+    deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
+    leftFac,rightFac = rootsys.standfac(deltaWords[0])
+    for i in deltaWords[2:]:
+        if(word.letter_list_cmp(i[:len(leftFac)],leftFac.string) != 0):
             return False
-        if(word.letter_list_cmp(parsed[0].get_letter_arr(), leftstand.string) != 0):
+        parsed_form = rootsys.parse_to_block_format(i[len(leftFac):],include_flipped=False)
+        if(len(parsed_form) != 2):
             return False
-        if(parsed[1].get_index() != ellindex + 1):
+        if(word.letter_list_cmp(parsed_form[1].get_letter_arr(), rightFac.string) != 0):
             return False
-        if(word.letter_list_cmp(parsed[2].get_letter_arr(), rightstand) != 0):
+        if(parsed_form[0].get_type() != 'im'):
             return False
-    return True
+    return True 
 
 def flipped_delta_pattern(rootsys: rootSystem, index: int) ->bool:
     deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
@@ -27,12 +21,12 @@ def flipped_delta_pattern(rootsys: rootSystem, index: int) ->bool:
     for i in deltaWords[2:]:
         if(word.letter_list_cmp(i[:len(leftFac)],leftFac.string) != 0):
             return False
-        parsed_form = rootsys.parse_to_block_format(i[len(leftFac):],include_delta=False)
+        parsed_form = rootsys.parse_to_block_format(i[len(leftFac):])
         if(len(parsed_form) != 2):
             return False
         if(word.letter_list_cmp(parsed_form[1].get_letter_arr(), rightFac.string) != 0):
             return False
-        if(parsed_form[0].get_type() != 'fim'):
+        if(parsed_form[0].get_type() != 'pim'):
             return False
     return True 
 
@@ -112,12 +106,12 @@ def generate_delta_types(rootsys,k=3) ->deltaTypesCollection:
             if(type(j) is not str):
                 splitting = j[0]
                 break
-        if(definitive_delta_pattern(rootsys,i)):
-            breakType = 'definitive'
-        #elif(standard_delta_pattern(rootsys,i)):
-        #    breakType = "standard"
-        #elif(flipped_delta_pattern(rootsys,i)):
-        #    breakType = "flipped"
+        #if(definitive_delta_pattern(rootsys,i)):
+        #    breakType = 'definitive'
+        if(standard_delta_pattern(rootsys,i)):
+            breakType = "standard"
+        elif(flipped_delta_pattern(rootsys,i)):
+            breakType = "flipped"
         #elif(delta_split_at_cofac(rootsys,i)):
         #    breakType = "cofac"
         #elif(last_smallest_delta_pattern(rootsys,i)):

@@ -122,7 +122,7 @@ class word:
                 return first[:i]
         return first[:minlen]
 class parseblock:
-    def __init__(self,wordArray,blocktype:{'word','im','fim'},index = 0,repeat=1,perm_index=0):
+    def __init__(self,wordArray,blocktype:{'word','im','pim'},index = 0,repeat=1,perm_index=0):
         self.__letter_arr = np.array(wordArray,dtype=object)
         self.__type = blocktype
         self.__repeat = repeat
@@ -147,8 +147,6 @@ class parseblock:
             return str(''.join([str(i) for i in self.__letter_arr]))
         if self.__type == 'im':
             return str(f"[im,{self.__index},{self.__repeat}]")
-        if self.__type == 'fim':
-            return str(f"[fim,{self.__index},{self.__repeat}]")
         if self.__type == 'pim':
             return str(f"[{self.__index},{self.__perm_index},{self.__repeat}]")
     def __len__(self):
@@ -1055,10 +1053,9 @@ class rootSystem:
         if(len(string) > 0): 
             retarr.append(string)
         return retarr
-    def parse_to_block_format(self,parseWord,include_delta=True,include_flipped=True,include_random_rotation=True) ->parseblockchain:
+    def parse_to_block_format(self,parseWord,include_flipped=True) ->parseblockchain:
         parsed_arr = []
         deltaWords = self.__get_words(self.delta)
-        flippedDeltaWords = self.get_flipped_im_words()
         stack = []
         stackweight = np.zeros(self.n+1,dtype=int)
         for letter in parseWord:
@@ -1071,7 +1068,10 @@ class rootSystem:
                     for i in range(len(deltaWords)):
                         deltaWord = deltaWords[i]
                         flag = False
-                        for j in range(self.deltaHeight):
+                        upper = self.deltaHeight
+                        if( not include_flipped):
+                            upper = 1
+                        for j in range(upper):
                             if(stack[-self.deltaHeight] == deltaWord[j]):
                                 flippedWord = list(deltaWord[j:]) + list(deltaWord[:j])
                                 if(word.letter_list_cmp(flippedWord,stack[-self.deltaHeight:]) == 0):
@@ -1079,38 +1079,18 @@ class rootSystem:
                                         parsed_arr.append(parseblock(stack[:-self.deltaHeight],'word'))
                                     if(len(parsed_arr) > 0 and parsed_arr[-1].get_type() == 'pim' and parsed_arr[-1].get_index() == i+1 and parsed_arr[-1].get_perm_index() == j):
                                         parsed_arr[-1].increment_repeat()
+                                    elif(len(parsed_arr) > 0 and parsed_arr[-1].get_type() == 'im' and parsed_arr[-1].get_index() == i+1 and j == 0):
+                                        parsed_arr[-1].increment_repeat()
                                     else:
-                                        parsed_arr.append(parseblock(deltaWord.string,'pim',i+1,perm_index=j))
+                                        if(j == 0):
+                                            parsed_arr.append(parseblock(deltaWord.string,'im',i+1,perm_index=j))
+                                        else:
+                                            parsed_arr.append(parseblock(deltaWord.string,'pim',i+1,perm_index=j))
                                     stack = []
                                     stackweight[:] = 0
                                     flag = True
                                     break
                         if(flag):
-                            break
-            if(len(stack) >= self.deltaHeight):
-                if(include_delta):
-                    for i in range(len(deltaWords)):
-                        deltaWord = deltaWords[i]
-                        if(word.letter_list_cmp(deltaWord.string,stack[-self.deltaHeight:]) == 0):
-                            if(len(stack) > self.deltaHeight):
-                                parsed_arr.append(parseblock(stack[:-self.deltaHeight],'word'))
-                            if(len(parsed_arr) > 0 and parsed_arr[-1].get_type() == 'im' and parsed_arr[-1].get_index() == i+1):
-                                parsed_arr[-1].increment_repeat()
-                            else:
-                                parsed_arr.append(parseblock(deltaWord.string,'im',i+1))
-                            stack = []
-                            break
-                if(include_flipped):
-                    for i in range(len(flippedDeltaWords)):
-                        flippedDeltaWord = flippedDeltaWords[i]
-                        if(word.letter_list_cmp(flippedDeltaWord.string,stack[-self.deltaHeight:]) == 0):
-                            if(len(stack) > self.deltaHeight):
-                                parsed_arr.append(parseblock(stack[:-self.deltaHeight],'word'))
-                            if(len(parsed_arr) > 0 and parsed_arr[-1].get_type() == 'fim' and parsed_arr[-1].get_index() == i+1):
-                                parsed_arr[-1].increment_repeat()
-                            else:
-                                parsed_arr.append(parseblock(flippedDeltaWord.string,'fim',i+1))
-                            stack = []
                             break
         if(len(stack) > 0): 
             parsed_arr.append(parseblock(stack,'word'))
@@ -1252,7 +1232,7 @@ class rootSystem:
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
-    def get_convex_set(self,weight,k=1):
+    def get_imaginary_convex_set(self,weight,k=1):
         word = self.get_words(weight)[0]
         imwords = self.get_words(self.delta*k)
         reducedweight = (weight-self.delta*weight[0])[1:]
@@ -1260,11 +1240,13 @@ class rootSystem:
         spanset = np.zeros((self.n+1,self.n),dtype=int)
         spanset[-1] = reducedweight
         i=0
+        flag= False
         for w in imwords:
-            if(self.split_e_bracket(w.hs,word)):
+            if(flag or self.split_e_bracket(w.hs,word)): 
                 arr.append(w)
+                flag = True
             spanset[i] = w.hs
-            if(np.linalg.matrix_rank(spanset) < i+1):
+            if(np.linalg.matrix_rank(spanset) <= i+1):
                 return arr
             i+=1
         return arr
