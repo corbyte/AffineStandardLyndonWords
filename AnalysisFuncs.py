@@ -44,32 +44,8 @@ def definitive_delta_pattern(rootsys: rootSystem, index: int)-> bool:
         if(parsed_form[0].get_type() != 'pim'):
             return False
     return True 
-
-def last_smallest_delta_pattern(rootsys:rootSystem, index: int) -> bool:
-    deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
-    for i in range(-1,-rootsys.deltaHeight-1,-1):
-        if(deltaWords[0][i].rootIndex == rootsys.ordering[0].rootIndex):
-            smallestIndex = rootsys.deltaHeight + i
-            break
-    for deltaWord in deltaWords[2:]:
-        parsed = rootsys.parse_to_delta_format(deltaWord)
-        if(len(parsed) != 3):
-            return False
-        if(smallestIndex != len(parsed[0])):
-            return False
-    return True
-
-def two_delta_words_delta_pattern(rootsys:rootSystem,index:int) -> bool:
-    deltaWords = rootsys.get_chain(rootsys.delta)[index+rootsys.n*2::rootsys.n]
-    for deltaWord in deltaWords:
-        parsed = rootsys.parse_to_delta_format(deltaWord)
-        if(len(parsed) != 4):
-            return False
-        if(type(parsed[0]) != str or type(parsed[1]) != list or type(parsed[2]) != list or type(parsed[3])!= str):
-            return False
-    return True
 class deltaTypes:
-    def __init__(self,index:int,hs:list,type:str,insertedIndex:int,leftfac:str,rightfac:str):
+    def __init__(self,index:int,hs:list,type:str,insertedIndex:int,leftfac:str,rightfac:str, flipIndex = 0):
         self.index = index
         self.hs = hs
         #is either "last" or "cofac" or "neither" if something goes horribly wrong
@@ -77,17 +53,18 @@ class deltaTypes:
         self.insertedIndex = insertedIndex
         self.leftfac = leftfac
         self.rightfac = rightfac
+        self.flipIndex = flipIndex
     def to_list(self):
-        return [self.index,self.type,self.insertedIndex,self.leftfac,self.rightfac]
+        return [self.index,self.type,self.insertedIndex,self.leftfac,self.rightfac,self.flipindex]
 class deltaTypesCollection:
     def __init__(self,rootsys:rootSystem,deltaTypesList):
         self.type = rootsys.type
         self.ordering = str(rootsys.ordering)
         self.deltaTypes = deltaTypesList
     def to_csv(self)->str:
-        retstr = f"{self.type},{self.ordering},,,,\n"
+        retstr = f"{self.type},{self.ordering},,,,,\n"
         for i in self.deltaTypes:
-            retstr+= f"{i.index},[{' '.join([str(j) for j in i.hs])}],{i.type},{i.insertedIndex},{i.leftfac},{i.rightfac}\n"
+            retstr+= f"{i.index},[{' '.join([str(j) for j in i.hs])}],{i.type},{i.insertedIndex},{i.leftfac},{i.rightfac},{i.flipIndex}\n"
         return retstr
     def not_all_standard(self) -> bool:
         for i in self.deltaTypes:
@@ -101,27 +78,17 @@ def generate_delta_types(rootsys:rootSystem,k=3) ->deltaTypesCollection:
     for i in range(rootsys.n):
         kdeltaWord = kdeltaWords[i]
         splitting = 0
-        parsedForm = rootsys.parse_to_delta_format(kdeltaWord)
-        for j in parsedForm:
-            if(type(j) is not str):
-                splitting = j[0]
-                break
-        #if(definitive_delta_pattern(rootsys,i)):
-        #    breakType = 'definitive'
         if(standard_delta_pattern(rootsys,i)):
             breakType = "standard"
         elif(flipped_delta_pattern(rootsys,i)):
             breakType = "flipped"
-        #elif(delta_split_at_cofac(rootsys,i)):
-        #    breakType = "cofac"
-        #elif(last_smallest_delta_pattern(rootsys,i)):
-        #   breakType = "lastSmallest"
-        #elif(two_delta_words_delta_pattern(rootsys,i)):
-        #    breakType = "twoDeltaWords"
         else:
             breakType = "other"
         factors = rootsys.standfac(deltaWords[i])
-        listOfDeltaTypes.append(deltaTypes(i+1,deltaWords[i].hs,breakType,splitting,factors[0].no_commas(),factors[1].no_commas()))
+        block = rootsys.parse_to_block_format(kdeltaWord[-rootsys.deltaHeight - len(factors[1]):-len(factors[1])])[0]
+        flip_index = block.get_perm_index()
+        inserted_index = block.get_index()
+        listOfDeltaTypes.append(deltaTypes(i+1,deltaWords[i].hs,breakType,inserted_index,factors[0].no_commas(),factors[1].no_commas(),flip_index))
     return deltaTypesCollection(rootsys,listOfDeltaTypes)
 def costfac_delta_type_conditions_met(rootsys:rootSystem,deltaWords,index):
     factorization = rootsys.costfac(deltaWords[index])
