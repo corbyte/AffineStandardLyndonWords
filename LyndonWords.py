@@ -625,13 +625,17 @@ class rootSystem:
     def get_chain(self,weight,min_delta = 2):
         """Gets the string of word weight, weight+\delta \cdots for all generated words"""
         self.generate_up_to_delta(min_delta)
+        if(self.is_imaginary_height(sum(weight))):
+            modweight = self.delta
+        else:
+            modweight = self.mod_delta(weight)[0]
         matches = []
         k=0
-        newWord = self.__get_words(weight + k*self.delta)
+        newWord = self.__get_words(modweight + k*self.delta)
         while len(newWord) > 0:
             matches.extend(newWord)
             k+=1
-            newWord=self.__get_words(weight + k*self.delta)
+            newWord=self.__get_words(modweight + k*self.delta)
         return matches
     def is_imaginary_height(self,height:int):
         """Checks if a word has imaginary height"""
@@ -741,6 +745,23 @@ class rootSystem:
                     break
                 monotonicity = -1
         return monotonicity
+    def get_monotone_increasing(self):
+        monotone_inc = []
+        for i in self.baseWeights[:-1]:
+            res = self.get_monotonicity(i)
+            if(res == 1):
+                monotone_inc.append(i)
+        return monotone_inc     
+    def get_monotone_decreasing(self):
+        monotone_dec = []
+        for i in self.baseWeights[:-1]:
+            res = self.get_monotonicity(i)
+            if(res == -1):
+                monotone_dec.append(i)
+        return monotone_dec
+    def get_same_monotonicity_factors(self,root):
+        root = self.mod_delta(root)
+        rootplus = root + self.delta     
     def check_monotonicity(self, filter:{'All', 'Increasing', 'Decreasing','None'}="All"):
         """Filter for checking monotonicity of all words"""
         returnarr = []
@@ -1232,9 +1253,9 @@ class rootSystem:
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
-    def get_imaginary_convex_set(self,weight,k=1):
+    def get_imaginary_convex_set_index(self,weight):
         word = self.SL(weight)[0]
-        imwords = self.SL(self.delta*k)
+        imwords = self.SL(self.delta)
         reducedweight = (weight-self.delta*weight[0])[1:]
         arr = []
         spanset = np.zeros((self.n+1,self.n),dtype=int)
@@ -1243,13 +1264,17 @@ class rootSystem:
         flag= False
         for w in imwords:
             if(flag or self.split_e_bracket(w.hs,word)): 
-                arr.append(w)
+                arr.append(i+1)
                 flag = True
             spanset[i] = w.hs
             if(np.linalg.matrix_rank(spanset) <= i+1):
                 return arr
             i+=1
         return arr
+    def m_k(self,weight):
+        return self.get_imaginary_convex_set_index(weight)[-1]
+    def M_k(self,weight):
+        return self.get_imaginary_convex_set_index(weight)[0]
     def W_set_compare(element1,element2):
         if(word.letter_list_cmp(element1[0] + element1[1],
                                 element2[0] + element2[1]) == 0):

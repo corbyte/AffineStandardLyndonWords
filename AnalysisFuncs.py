@@ -64,7 +64,7 @@ class deltaTypesCollection:
     def to_csv(self)->str:
         retstr = f"{self.type},{self.ordering},,,,,\n"
         for i in self.deltaTypes:
-            retstr+= f"{i.index},[{' '.join([str(j) for j in i.hs])}],{i.type},{i.insertedIndex},{i.leftfac},{i.rightfac},{i.flipIndex}\n"
+            retstr+= f"{i.index},{i.type},{i.insertedIndex},{i.leftfac},{i.rightfac},{i.flipIndex},[{' '.join([str(j) for j in i.hs])}]\n"
         return retstr
     def not_all_standard(self) -> bool:
         for i in self.deltaTypes:
