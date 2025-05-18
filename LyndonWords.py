@@ -110,17 +110,6 @@ class word:
     def no_commas(self):
         """returns the word without commas as a string"""
         return ''.join(str(i) for i in self.string)
-    def lca(first,second):
-        if(len(first) < len(second)):
-            minlen = len(first)
-        else:
-            minlen = len(second)
-        for i in range(minlen):
-            if(first[i] != second[i]):
-                if(i == 0):
-                    return []
-                return first[:i]
-        return first[:minlen]
 class parseblock:
     def __init__(self,wordArray,blocktype:{'word','im','pim'},index = 0,repeat=1,perm_index=0):
         self.__letter_arr = np.array(wordArray,dtype=object)
@@ -217,6 +206,11 @@ class rootSystem:
             return True
         weights = re.weights - (self.delta * re.weights[0])
         return np.dot(im.hs ,(self.sym_matrix @ weights[1:])) != 0
+    def dot(self,v1,v2):
+        v1p = (v1 - (self.delta * v1.weights[0]))[1:]
+        v2p = (v2 - (self.delta * v2.weights[0]))[1:]
+        return np.dot(v2p,self.sym_matrix @ v1p)
+    
     def split_e_bracket(self,hs,realword) -> bool:
         weights = realword.weights - (self.delta * realword.weights[0])
         return np.dot(hs ,(self.sym_matrix @ weights[1:])) != 0
@@ -262,7 +256,7 @@ class rootSystem:
         weights = realWeights - (self.delta * realWeights[0])
         return np.dot(weights[1:] ,(self.sym_matrix @hs)) != 0
     def __init__(self, ordering,type:str):
-        """Initializationof root system
+        """Initialization of root system
         
         ordering -- list of ordering for the rootsystem
         type -- type of the rootsystem
@@ -831,7 +825,7 @@ class rootSystem:
             delta+= 1 
         return returnarr
     def get_decompositions(self,weightToDecompose):
-        """Gets all decompositions of a word"""
+        """Gets all decompositions of a weight"""
         if(weightToDecompose is not np.array):
             weightToDecompose = np.array(weightToDecompose)
         deltaSum = self.deltaHeight
@@ -848,99 +842,10 @@ class rootSystem:
                     if(np.all(potential_weight == bw)):
                         yield (i+deltaIndex*self.delta,weightToDecompose-i-deltaIndex*self.delta)
             deltaIndex+= 1
-    def general_critical_roots(self,degree):
-        for i in self.get_decompositions(degree):
-            left = i[0]
-            right = i[1]
-            rightprime = np.copy(right)
-            flag = True
-            while((sum(rightprime)-1)//(sum(left)) >= 1):
-                rightprime = rightprime - left
-                if(not self.contains_weight(rightprime)):
-                    flag = False
-                    break
-            if(not flag):
-                continue
-            oneOver = False
-            continueflag = False
-            for j in range(len(i[0])):
-                if((rightprime - left)[j] > 1):
-                    continueflag = True
-                    break
-                if((rightprime - left)[j] == 1):
-                    if(oneOver):
-                        continueflag = True
-                        break
-                    else:
-                        oneOver = True
-            if(continueflag):
-                continue
-            yield (left,right)
-    def print_general_critical_roots(self,degree):
-        for i in self.general_critical_roots(degree):
-            print(i)
-    def realized_critical_roots(self,degree):
-        for left,right in self.general_critical_roots(degree):
-            leftstrs = self.SL(left)
-            rightstrs = self.SL(right)
-            for leftstr in leftstrs:
-                for rightstr in rightstrs:
-                    temprightstr = rightstr.string
-                    flag = False
-                    while(len(temprightstr) > len(leftstr)):
-                        if(word.letter_list_cmp(leftstr,temprightstr[:len(leftstr)]) == 0):
-                            temprightstr = temprightstr[len(leftstr):]
-                        else:
-                            flag = True
-                            break
-                    if(flag):
-                        continue
-                    if((len(temprightstr) == 1 and word.letter_list_cmp(temprightstr,leftstr.string) > 0 )
-                        or((word.letter_list_cmp(leftstr.string[:len(temprightstr)-1],temprightstr[:-1]) == 0)
-                            and rightstr > leftstr)):
-                            yield (leftstr,rightstr)
-                                                        
-    def print_realized_critical_roots(self,degree,printfunc = None):
-        if(printfunc == None):
-            printfunc = (lambda x: f"{x[0].no_commas()}:{x[1].no_commas()}")
-        elif(printfunc == "delta_format"):
-            printfunc = (lambda x: f"{self.parse_to_delta_format(x[0])}:{self.parse_to_delta_format(x[1])}")
-        elif(printfunc == 'weights'):
-            printfunc = (lambda x: f"{x[0].weights}:{x[1].weights}")
-        elif(printfunc == 'mod_weight'):
-            printfunc = (lambda x: f"{self.mod_delta(x[0].weights)}:{self.mod_delta(x[1].weights)}")
-        for i in self.realized_critical_roots(degree):
-            print(printfunc(i))
-    def get_critical_roots(self,rootindex,k):
-        minuspart = np.zeros(self.n+1,dtype=int)
-        minuspart[rootindex] = 1
-        decomps = self.get_decompositions(k*self.deltas)
-        retlist = []
-        for i in decomps:
-            rightless = i[1] - minuspart
-            if(self.is_imaginary_height(sum(i[0]))):
-                continue
-            if(min(rightless) < 0):
-                continue
-            if(min(i[0] - rightless) >= 0):
-                retlist.append(i[0])
-        return retlist
     def mod_delta(self,root):
         deltamult = sum(root)//(self.deltaHeight)
         modroot = root - deltamult*self.delta
         return (modroot,deltamult)
-    def get_critical_pairs(self,rootindex,k):
-        for left in self.get_critical_roots(rootindex,k):
-            leftstr = self.SL(left)[0]
-            rightstr = self.SL(k*self.delta - left)[0]
-            if(len(rightstr) == 1
-               or(word.letter_list_cmp(leftstr.string[:len(rightstr)-1],rightstr.string[:-1]) == 0
-                  and rightstr > leftstr
-                  and rightstr[-1].rootIndex == rootindex)):
-                yield (leftstr,rightstr)
-    def print_critical_pairs(self,rootindex,k):
-        for (leftstr,rightstr) in self.get_critical_pairs(rootindex,k):
-                print(f"{leftstr.no_commas()}:{rightstr.no_commas()}")
     def get_potential_words(self,weights):
         """This returns all other words that could be factors of a given word"""
         decomps = self.__get_decompositions(weights)
@@ -978,7 +883,7 @@ class rootSystem:
         if(n == 7):
             return np.array([1,1,2,3,4,3,2,2],dtype=int)
         if(n == 8):
-            return np.array([1,2,3,4,5,6,4,2,3])
+            return np.array([1,2,3,4,5,6,4,2,3],dtype=int)
         raise ValueError("n must be 6,7,8")
     def F_delta() -> np.array:
         return np.array([1,2,3,4,2],dtype=int)
@@ -1074,7 +979,7 @@ class rootSystem:
         if(len(string) > 0): 
             retarr.append(string)
         return retarr
-    def parse_to_block_format(self,parseWord,include_flipped=True) ->parseblockchain:
+    def parse_to_block_format(self,parseWord,include_flipped=False) ->parseblockchain:
         parsed_arr = []
         deltaWords = self.__get_words(self.delta)
         stack = []
@@ -1172,6 +1077,12 @@ class rootSystem:
             if(n == 2):
                 return np.array([[2,-1],[-3,2]], dtype=int)
         raise ValueError("Invalid parameters")
+    def get_roots_with_decomp_containing_root(self,root):
+        return_list=[]
+        for i in self.baseWeights[:-1]:
+            if self.contains_weight(self.delta + i-root):
+                return_list.append(i)
+        return return_list
     def get_min_right_factor(self,root):
         minword = self._maxWord
         for l,r in self.get_decompositions(root):
@@ -1253,7 +1164,7 @@ class rootSystem:
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
-    def get_imaginary_convex_set_index(self,weight):
+    def imaginary_convex_set(self,weight):
         word = self.SL(weight)[0]
         imwords = self.SL(self.delta)
         reducedweight = (weight-self.delta*weight[0])[1:]
@@ -1272,9 +1183,9 @@ class rootSystem:
             i+=1
         return arr
     def m_k(self,weight):
-        return self.get_imaginary_convex_set_index(weight)[-1]
+        return self.imaginary_convex_set(weight)[-1]
     def M_k(self,weight):
-        return self.get_imaginary_convex_set_index(weight)[0]
+        return self.imaginary_convex_set(weight)[0]
     def W_set_compare(element1,element2):
         if(word.letter_list_cmp(element1[0] + element1[1],
                                 element2[0] + element2[1]) == 0):
@@ -1295,15 +1206,15 @@ class rootSystem:
         w_set = self.get_W_set(k)
         return [(i[0].no_commas(),i[1].no_commas()) for i in w_set]
             
-    def max_im_word(self,weight,n=1):
+    def max_im_word(self,weight,k=1):
         word = self.SL(weight)[0]
-        imwords = self.SL(self.delta * n)
+        imwords = self.SL(self.delta * k)
         for w in imwords:
             if(self.split_e_bracket(w.hs,word)):
                 return w
-    def max_flipped_im_word(self,weight,n=1):
+    def max_flipped_im_word(self,weight,k=1):
         word = self.SL(weight)[0]
-        imwords = self.SL(self.delta * n)
+        imwords = self.SL(self.delta * k)
         maxflip = self.minWord
         for w in imwords:
             if(not self.split_e_bracket(w.hs,word)):

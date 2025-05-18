@@ -21,7 +21,7 @@ def flipped_delta_pattern(rootsys: rootSystem, index: int) ->bool:
     for i in deltaWords[2:]:
         if(word.letter_list_cmp(i[:len(leftFac)],leftFac.string) != 0):
             return False
-        parsed_form = rootsys.parse_to_block_format(i[len(leftFac):])
+        parsed_form = rootsys.parse_to_block_format(i[len(leftFac):],True)
         if(len(parsed_form) != 2):
             return False
         if(word.letter_list_cmp(parsed_form[1].get_letter_arr(), rightFac.string) != 0):
@@ -36,7 +36,7 @@ def definitive_delta_pattern(rootsys: rootSystem, index: int)-> bool:
     for i in deltaWords[2:]:
         if(word.letter_list_cmp(i[:len(leftFac)],leftFac.string) != 0):
             return False
-        parsed_form = rootsys.parse_to_block_format(i[len(leftFac):])
+        parsed_form = rootsys.parse_to_block_format(i[len(leftFac):],True)
         if(len(parsed_form) != 2):
             return False
         if(word.letter_list_cmp(parsed_form[1].get_letter_arr(), rightFac.string) != 0):
@@ -85,7 +85,7 @@ def generate_delta_types(rootsys:rootSystem,k=3) ->deltaTypesCollection:
         else:
             breakType = "other"
         factors = rootsys.standfac(deltaWords[i])
-        block = rootsys.parse_to_block_format(kdeltaWord[-rootsys.deltaHeight - len(factors[1]):-len(factors[1])])[0]
+        block = rootsys.parse_to_block_format(kdeltaWord[-rootsys.deltaHeight - len(factors[1]):-len(factors[1])],True)[0]
         flip_index = block.get_perm_index()
         inserted_index = block.get_index()
         listOfDeltaTypes.append(deltaTypes(i+1,deltaWords[i].hs,breakType,inserted_index,factors[0].no_commas(),factors[1].no_commas(),flip_index))
