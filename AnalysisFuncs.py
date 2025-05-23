@@ -179,6 +179,10 @@ def check_basic_periodicity(rootSys:rootSystem,k=2):
                     break
             if(not flag):
                 return i
+def verify_periodicity(rootSys:rootSystem):
+    for i in rootSys.verify_periodicity():
+        return False
+    return True
 class monotone_return_class:
     def __init__(self,truthValue,rootsysorder="",base="",monotone="",conj_monotone=""):
         self.truthValue = truthValue

@@ -1,5 +1,8 @@
 import numpy as np
-from  functools import cmp_to_key
+from functools import cmp_to_key
+import networkx
+import matplotlib.pyplot as plt
+
 class letter:
     """Class for letters of words"""
     order_index:int
@@ -717,13 +720,20 @@ class rootSystem:
         for i in self.baseWeights:
             returnarr.append(np.array(self.get_chain(i)))
         return np.array(returnarr)
-    def get_monotonicity(self, weights,deltaIndex = 0):
+    def get_monotonicity(self, weights,deltaIndex = 0,cheap=True):
         """Gets monotonicity of a chain of words
         
         < 0 decreasing
         = 0 not monotone
         > 0 increasing
         """
+        if(cheap):
+            word = self.SL(self.mod_delta(weights)[0])[0]
+            delta_minus = self.SL(self.delta - self.mod_delta(weights)[0])[0]
+            if(word > delta_minus):
+                return -1
+            else:
+                return 1
         self.generate_up_to_delta(2)
         words = self.get_chain(weights)
         for j in range(1,len(words)):
@@ -1202,7 +1212,7 @@ class rootSystem:
                     if i < j:
                         unsortedW.append((i,j))
         return sorted(unsortedW,key=cmp_to_key(rootSystem.W_set_compare))
-    def get_print_W_set(self,k=1):
+    def text_W_set(self,k=1):
         w_set = self.get_W_set(k)
         return [(i[0].no_commas(),i[1].no_commas()) for i in w_set]
             
@@ -1226,3 +1236,75 @@ class rootSystem:
         if(self.__flipped_im_words is None):
             self.generate_up_to_delta(1)
         return self.__flipped_im_words
+    def chain_graph(self,increasing=True):
+        if(increasing):
+            reduced_set = [self.mod_delta(i)[0] for i in self.get_monotone_increasing()]
+        else:
+            reduced_set = [self.mod_delta(i)[0] for i in self.get_monotone_decreasing()]
+        G = networkx.DiGraph()
+        G.add_nodes_from([tuple(i) for i in reduced_set])
+        for i in reduced_set:
+            for j in reduced_set:
+                r = self.mod_delta(i+j)[0]
+                for k in reduced_set:
+                    if np.all(r == k):
+                        G.add_edge(tuple(i),tuple(k))
+                        break
+        return G
+    def get_simple_roots(self,G):
+        topological_order = list(networkx.topological_sort(G))
+        
+        # Identify nodes at the same level in topological order
+        levels = {}
+        for node in topological_order:
+            predecessors = set(G.predecessors(node))
+            if not predecessors:
+                level = 0
+            else:
+                level = max(levels[p] for p in predecessors) + 1
+            levels[node] = level
+        
+        # Group nodes by level
+        nodes_by_level = {}
+        for node, level in levels.items():
+            if level not in nodes_by_level:
+                nodes_by_level[level] = []
+            nodes_by_level[level].append(node)
+        return list(nodes_by_level.values())[0]
+    def conj_periodicity(self):
+        M_dict = dict()
+        periodicity_dict = dict()
+        M_sub_dict = dict()
+        for i in self.baseWeights[:-1]:
+            if(self.get_monotonicity(i) > 0):
+                M_dict[tuple(i)] = self.m_k(i)
+            else:
+                M_dict[tuple(i)] = self.M_k(i)
+            periodicity_dict[tuple(i)] = -1
+            M_sub_dict[tuple(i)] = dict()
+        for isinc in [True,False]:
+            graph = self.chain_graph(isinc)
+            for node in networkx.topological_sort(graph):
+                max_periodicity = 1
+                for decomp in self.get_decompositions(self.delta + node):
+                    if self.is_imaginary_height(sum(decomp[0])) or self.is_imaginary_height(sum(decomp[1])):
+                        continue
+                    if(self.get_monotonicity(decomp[0]) == self.get_monotonicity(decomp[1])):
+                        d1 = self.mod_delta(decomp[0])[0]
+                        d2 = self.mod_delta(decomp[1])[0]
+                        for k in M_sub_dict[tuple(d1)].keys():
+                            if k not in M_sub_dict[tuple(d2)]:
+                                continue
+                            if max_periodicity < M_sub_dict[tuple(d1)][k] + M_sub_dict[tuple(d2)][k]:
+                                max_periodicity = M_sub_dict[tuple(d1)][k] + M_sub_dict[tuple(d2)][k]
+                            M_sub_dict[node][k] = M_sub_dict[tuple(d1)][k] + M_sub_dict[tuple(d2)][k]
+                if max_periodicity == 1:
+                    M_sub_dict[node][M_dict[node]] = 1 
+                periodicity_dict[node] = max_periodicity
+        return periodicity_dict
+    def verify_periodicity(self):
+        conj_periodicities = self.conj_periodicity()
+        for i in self.baseWeights[:-1]:
+            periodity = self.get_periodicity(i)
+            if(conj_periodicities[tuple(i)] != periodity):
+                yield f"Conj: {conj_periodicities[tuple(i)]}, Actual: {periodity}"
