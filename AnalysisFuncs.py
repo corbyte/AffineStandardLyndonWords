@@ -3,7 +3,7 @@ from LyndonWords import *
 def standard_delta_pattern(rootsys:rootSystem,index:int) -> bool:
     deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
     leftFac,rightFac = rootsys.standfac(deltaWords[0])
-    for i in deltaWords[2:]:
+    for i in deltaWords[1:]:
         if(word.letter_list_cmp(i[:len(leftFac)],leftFac.string) != 0):
             return False
         parsed_form = rootsys.parse_to_block_format(i[len(leftFac):],include_flipped=False)
@@ -18,7 +18,7 @@ def standard_delta_pattern(rootsys:rootSystem,index:int) -> bool:
 def flipped_delta_pattern(rootsys: rootSystem, index: int) ->bool:
     deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
     leftFac,rightFac = rootsys.standfac(deltaWords[0])
-    for i in deltaWords[2:]:
+    for i in deltaWords[1:]:
         if(word.letter_list_cmp(i[:len(leftFac)],leftFac.string) != 0):
             return False
         parsed_form = rootsys.parse_to_block_format(i[len(leftFac):],True)
@@ -33,7 +33,7 @@ def flipped_delta_pattern(rootsys: rootSystem, index: int) ->bool:
 def definitive_delta_pattern(rootsys: rootSystem, index: int)-> bool:
     deltaWords = rootsys.get_chain(rootsys.delta)[index::rootsys.n]
     leftFac,rightFac = rootsys.standfac(deltaWords[0])
-    for i in deltaWords[2:]:
+    for i in deltaWords[1:]:
         if(word.letter_list_cmp(i[:len(leftFac)],leftFac.string) != 0):
             return False
         parsed_form = rootsys.parse_to_block_format(i[len(leftFac):],True)
