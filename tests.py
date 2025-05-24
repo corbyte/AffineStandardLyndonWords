@@ -1,9 +1,9 @@
 import unittest
 from LyndonWords import *
 import numpy
-def toSet(lW):
+def toSet(lW:rootSystem):
     resultSet = set()
-    for i in lW.weightToWordDictionary.values():
+    for i in lW.rootToWordDictionary.values():
         for j in i:
             resultSet.add(str(j))
     return resultSet

@@ -150,8 +150,8 @@ def check_standard_fac_same(rootsys:rootSystem,k=2):
         others = [rootsys.standfac(i)[0] for i in 
                   rootsys.get_chain(rootsys.delta)[i::len(baseFacs)]]
         for o in others:
-            if(not np.all(o.weights-(o.height//(rootsys.deltaHeight))*rootsys.delta== baseFacs[i].weights)):
-                return (str(rootsys.ordering),i,o.weights-(o.height//(rootsys.deltaHeight)),baseFacs[i].weights)
+            if(not np.all(o.degree-(o.height//(rootsys.deltaHeight))*rootsys.delta== baseFacs[i].degree)):
+                return (str(rootsys.ordering),i,o.degree-(o.height//(rootsys.deltaHeight)),baseFacs[i].degree)
     return True
 class MaxPeriodicityReturn:
     def __init__(self,periodicity,maxRoot,ordering):
@@ -160,7 +160,7 @@ class MaxPeriodicityReturn:
         self.ordering = ordering
 def max_periodicity_rootSystem(rootsys:rootSystem):
     max = 0
-    for i in rootsys.baseWeights[:-1]:
+    for i in rootsys.baseRoots[:-1]:
         print(i)
         res = rootsys.get_periodicity(i)
         if(res > max):
@@ -170,7 +170,7 @@ def max_periodicity_rootSystem(rootsys:rootSystem):
 def check_basic_periodicity(rootSys:rootSystem,k=2):
     imwords = rootSys.SL(rootSys.delta)
     imfacs = [rootSys.costfac(i)[0] for i in imwords] + [rootSys.costfac(i)[1] for i in imwords]
-    for i in rootSys.baseWeights:
+    for i in rootSys.baseRoots:
         if(len(rootSys.SL(i+k*rootSys.delta)[0]) == 2):
             flag = False
             for imfac in imfacs:
@@ -194,7 +194,7 @@ class monotone_return_class:
         return (str(str(self.rootsysorder),self.base,self.monotone,self.conj_monotone))
 def monotonicity_conj(rootsys:rootSystem,k=3):
     rootsys.generate_up_to_delta(k)
-    for base in rootsys.baseWeights[:-1]:
+    for base in rootsys.baseRoots[:-1]:
         baseWord = rootsys.SL(base)[0]
         monotone = rootsys.get_monotonicity(base)
         for i in rootsys.SL(rootsys.delta):
@@ -217,9 +217,9 @@ class lca_critical_roots_return_class:
         return str((str(self.rootsysorder),self.word.no_commas(),self.leftcrit.no_commas(),self.rightcrit.no_commas()))
 def lca_on_critical_roots(rootSys:rootSystem,k=5):
     for kdelta in range(k+1):
-        for baseWeight in rootSys.baseWeights[:-1]:
-            criticalPairs = list(rootSys.realized_critical_roots(kdelta *rootSys.delta + baseWeight))
-            actual_word = rootSys.SL(kdelta * rootSys.delta + baseWeight)[0]
+        for baseRoot in rootSys.baseRoots[:-1]:
+            criticalPairs = list(rootSys.realized_critical_roots(kdelta *rootSys.delta + baseRoot))
+            actual_word = rootSys.SL(kdelta * rootSys.delta + baseRoot)[0]
             for j in range(len(criticalPairs)):
                 if(len(word.lca(actual_word,criticalPairs[j][0])) < len(criticalPairs[j][1])):
                     if(word.letter_list_cmp(actual_word.string,list(criticalPairs[j][0].string) + list(criticalPairs[j][1].string)) == 0):
