@@ -307,6 +307,8 @@ class rootSystem:
         self.__m_k_dict = dict()
         self.__M_k_dict = dict()
         self.__monotonicity_dict = dict()
+        self.__baseRoot_set = set()
+        self.__baseRoot_set.update([i.tobytes() for i in self.baseRoots])
         self.numberOfBaseRoots = len(self.baseRoots)
         self.cartan_matrix = rootSystem.get_cartan_matrix(self.type,self.n)
         self.delta = rootSystem.get_delta(self.type,self.n)
@@ -315,7 +317,6 @@ class rootSystem:
         self.vectors_norm2 = rootSystem.basis_vector_norm2(self.type,self.n)
         self.sym_matrix = self.get_sym_matrix()
         self._maxWord:word  = self.SL(degreeGeneration(self.ordering[-1]))[0]
-        self.__flipped_im_words = None
     def get_base_roots(type,n):
         """Returns roots of height <= delta for a certain type and n"""
         if(type == 'A'):
@@ -668,31 +669,28 @@ class rootSystem:
         imaginary = self.is_imaginary_height(height)
         potentialOptions = []
         maxWord  = self.minWord
+        maxLeft = self.minWord
         validBase = np.repeat(True,self.numberOfBaseRoots)
         kDelta = np.zeros(len(self.ordering),dtype=int)
         i = self.baseRoots[0]
         iSum=0
-        while(iSum < height):
+        while(iSum < height and sum(kDelta) < height):
             for baseWordIndex in range(self.numberOfBaseRoots):
                 if(not validBase[baseWordIndex]):
                     continue
                 i = self.baseRoots[baseWordIndex] + kDelta
                 iSum = sum(i)
-                if(iSum > height):
+                if(iSum >= height):
                     break
-                if(imaginary and ((iSum >= self.deltaHeight and height - iSum >= self.deltaHeight)
-                   or (not self.is_imaginary_height(iSum) and self.get_monotonicity(i) < 0))):
-                    #The left standard factor of SL_i(k\delta) has length greater than |(k-1)\delta|
-                    continue
-                if(self.is_imaginary_height(iSum) and iSum > self.deltaHeight):
-                    validBase[baseWordIndex] = False
+                if(imaginary and height > self.deltaHeight and ((iSum >= self.deltaHeight and height - iSum >= self.deltaHeight)
+                   or (not self.is_imaginary_height(iSum) and self.__monotonicity_dict[self.mod_delta(i)[0].tobytes()] < 0))):
+                    #The left standard factor of SL_i(k\delta) has length greater than |(k-1)\delta| and the left factor should be increasing
                     continue
                 j = combinations-i
-                words2 = self.__get_words(j)
-                if(len(words2) == 0):
+                if(len(self.__get_words(j)) == 0):
                     validBase[baseWordIndex] = False
                     continue
-                if(sum(kDelta) == 0 and not self.is_imaginary_height(sum(j))):
+                if(iSum < self.deltaHeight and not self.is_imaginary_height(height - iSum)):
                     validBase[self.__root_to_base_root_index[self.mod_delta(j)[0].tobytes()]] = False
                 eitherRootImaginary = (self.is_imaginary_height(iSum) or self.is_imaginary_height(height-iSum))
                 if(imaginary and eitherRootImaginary):
@@ -703,21 +701,29 @@ class rootSystem:
                     validBase[self.__root_to_base_root_index[self.delta.tobytes()]] = False
                     validBase[self.__root_to_base_root_index[self.mod_delta(combinations)[0].tobytes()]] = False
                 else:
-                    word1 = self.__get_words(i)[0]
-                    word2 = self.__get_words(j)[0]
+                    if(iSum < self.deltaHeight and height > self.deltaHeight and (self.__monotonicity_dict[i.tobytes()] != self.__monotonicity_dict[self.mod_delta(j)[0].tobytes()])):
+                        if(self.__monotonicity_dict[i.tobytes()] < 0):
+                            word1 = self.__get_words(i)[0]
+                            word2 = self.__get_words(j)[0]
+                        else:
+                            word1 = self.__get_words(combinations - self.mod_delta(j)[0])[0]
+                            word2 = self.__get_words(self.mod_delta(j)[0])[0]
+                        validBase[baseWordIndex] = False
+                    else:
+                        word1 = self.__get_words(i)[0]
+                        word2 = self.__get_words(j)[0]
+                        
                 if(word1< word2):
                     (a,b) = (word1,word2)
                 else:
                     (a,b) = (word2,word1)
                 if(not imaginary):
-                    #Checks to see if bracket is non-zero
-                    newWord = a+b
-                    if word.letter_list_cmp(newWord.string,maxWord.string) <= 0:
+                    #Sufficient to check that a is max L_\alpha
+                    if word.letter_list_cmp(a.string,maxLeft.string) < 0:
                         continue
-                    maxWord = newWord
+                    maxLeft = a
+                    maxWord = a+b
                 if(imaginary):
-                    #if(a.height > 1 and word.letter_list_cmp(a.string[a.cofactorizationSplit:],b.string) < 0):
-                    #    continue
                     potentialOptions.append(a+b)
                     continue
             kDelta+= self.delta
@@ -738,13 +744,6 @@ class rootSystem:
                         liPotentialOptions.append(potentialOptions[index])
                         row+=1
                     index += 1
-                if(height == self.deltaHeight):
-                    self.__flipped_im_words = []
-                    for i in liPotentialOptions:
-                        for j in range(1,self.deltaHeight):
-                            if(i[j].order_index == 0):
-                                self.__flipped_im_words.append(word(list(i[j:]) + list(i[:j]),degree=self.delta))
-                                break
                 self.rootToWordDictionary[combinations.tobytes()] = liPotentialOptions
                 self.__gen_m_k_M_k_dict()
                 self.__gen_monotonicity_dict()
@@ -796,6 +795,7 @@ class rootSystem:
         for i in self.baseRoots:
             returnarr.append(np.array(self.get_chain(i)))
         return np.array(returnarr)
+    
     def get_monotonicity(self, root,cached=True):
         """Gets monotonicity of a chain of words
         
@@ -803,9 +803,9 @@ class rootSystem:
         = 0 not monotone
         > 0 increasing
         """
+        self.generate_up_to_delta(1)
         if(cached):
             return self.__monotonicity_dict[self.mod_delta(root)[0].tobytes()]
-        self.generate_up_to_delta(1)
         words = self.get_chain(root)
         for j in range(1,len(words)):
             monotonicity = 0
@@ -908,7 +908,7 @@ class rootSystem:
                         yield (i+deltaIndex*self.delta,rootToDecompose-i-deltaIndex*self.delta)
             deltaIndex+= 1
     def mod_delta(self,root):
-        deltamult = sum(root)//(self.deltaHeight)
+        deltamult = (sum(root) - 1)//(self.deltaHeight)
         modroot = root - deltamult*self.delta
         return (modroot,deltamult)
     def get_potential_words(self,root):
@@ -1226,10 +1226,8 @@ class rootSystem:
         if(len(root) != self.n+1):
             return False
         root = np.array(root,dtype=int)
-        if(min(root) < 0 ):
-            return False
-        root -= ((sum(root)-1)//self.deltaHeight) * self.delta
-        return np.any(np.all(self.baseRoots[:] == root,axis=1))
+        mod_root = self.mod_delta(root)[0]
+        return mod_root.tobytes() in self.__baseRoot_set
     def letter_list_to_root(self,letterList):
         """Returns a list of letters to vector form"""
         arr = np.zeros(self.n + 1,dtype=int)
@@ -1296,10 +1294,6 @@ class rootSystem:
             if(self.costfac(w)[1] > maxflip):
                 maxflip = w
         return maxflip
-    def get_flipped_im_words(self):
-        if(self.__flipped_im_words is None):
-            self.generate_up_to_delta(1)
-        return self.__flipped_im_words
     def chain_graph(self,increasing=True):
         if(increasing):
             reduced_set = [self.mod_delta(i)[0] for i in self.get_monotone_increasing()]

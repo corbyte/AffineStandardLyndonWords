@@ -179,7 +179,7 @@ def check_basic_periodicity(rootSys:rootSystem,k=2):
             if(not flag):
                 return i
 def verify_periodicity(rootSys:rootSystem):
-    for i in rootSys.verify_periodicity():
+    for _ in rootSys.verify_periodicity():
         return False
     return True
 class lca_critical_roots_return_class:
