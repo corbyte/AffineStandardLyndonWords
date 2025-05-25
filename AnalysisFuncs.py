@@ -71,13 +71,12 @@ class deltaTypesCollection:
             if i.type != "last":
                 return True
         return False
-def generate_delta_types(rootsys:rootSystem,k=3) ->deltaTypesCollection:
+def generate_delta_types(rootsys:rootSystem,k=2) ->deltaTypesCollection:
     deltaWords = rootsys.SL(rootsys.delta)
     listOfDeltaTypes = []
     kdeltaWords = rootsys.SL(rootsys.delta*k)
     for i in range(rootsys.n):
         kdeltaWord = kdeltaWords[i]
-        splitting = 0
         if(standard_delta_pattern(rootsys,i)):
             breakType = "standard"
         elif(flipped_delta_pattern(rootsys,i)):
@@ -162,7 +161,7 @@ def max_periodicity_rootSystem(rootsys:rootSystem):
     max = 0
     for i in rootsys.baseRoots[:-1]:
         print(i)
-        res = rootsys.get_periodicity(i)
+        res = rootsys.periodicity(i)
         if(res > max):
             max = res
             maxRoot = i
@@ -183,30 +182,6 @@ def verify_periodicity(rootSys:rootSystem):
     for i in rootSys.verify_periodicity():
         return False
     return True
-class monotone_return_class:
-    def __init__(self,truthValue,rootsysorder="",base="",monotone="",conj_monotone=""):
-        self.truthValue = truthValue
-        self.rootsysorder = rootsysorder
-        self.base = base
-        self.monotone = monotone
-        self.conj_monotone = conj_monotone
-    def __str__(self):
-        return (str(str(self.rootsysorder),self.base,self.monotone,self.conj_monotone))
-def monotonicity_conj(rootsys:rootSystem,k=3):
-    rootsys.generate_up_to_delta(k)
-    for base in rootsys.baseRoots[:-1]:
-        baseWord = rootsys.SL(base)[0]
-        monotone = rootsys.get_monotonicity(base)
-        for i in rootsys.SL(rootsys.delta):
-            if(i <baseWord and rootsys.list_e_bracketing((i+ baseWord).string)):
-                conj_monotone = -1
-                break
-            if(i > baseWord and rootsys.list_e_bracketing((baseWord+ i).string)):
-                conj_monotone = 1
-                break
-        if(conj_monotone != monotone):
-            return monotone_return_class(False,str(rootsys.ordering),base,monotone,conj_monotone)
-    return monotone_return_class(True)
 class lca_critical_roots_return_class:
     def __init__(self,rootsysorder,w,leftcrit,rightcrit):
         self.rootsysorder = rootsysorder
@@ -229,3 +204,15 @@ def lca_on_critical_roots(rootSys:rootSystem,k=5):
 def convexity_from_perm(rootsys:rootSystem,k=5,word_convexity=False):
     for i in rootsys.check_convexity(k,word_convexity):
         return (str(rootsys.ordering),i[0].no_commas(),i[1].no_commas(),i[2].no_commas())
+    
+def periodicity_ell_1(rootSys:rootSystem):
+    left_parts = [rootSys.parse_to_block_format(i)[0] for i in rootSys.SL(3*rootSys.delta)]
+    for i in rootSys.roots_with_periodicity_n(1):
+        parse_block = rootSys.parse_to_block_format(rootSys.get_chain(i)[-1])
+        if(len(parse_block) != 3):
+            continue
+        if parse_block[0].get_type() != 'word' or parse_block[0].get_type() != 'word':
+            continue
+        if parse_block[0] not in left_parts:
+            return str(rootSys.ordering,i)
+        return None

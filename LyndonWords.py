@@ -45,6 +45,16 @@ class word:
         self.cofactorizationSplit = None
     def __len__(self):
         return self.height
+    def __iter__(self):
+        self.iter_index = 0
+        return self
+    def __next__(self):
+        if(self.iter_index == self.height):
+            self.iter_index = 0
+            raise StopIteration
+        x = self.string[self.iter_index]
+        self.iter_index += 1
+        return x
     def __getitem__(self,i):
         return self.string[i]
     def __str__(self):
@@ -143,6 +153,13 @@ class parseblock:
             return str(f"[{self.__index},{self.__perm_index},{self.__repeat}]")
     def __len__(self):
         return self.__letter_arr.size
+    def __eq__(self, value):
+        if type(value) is parseblock:
+            return word.letter_list_cmp(self.get_letter_arr(),value.get_letter_arr()) == 0
+        else:
+            raise Exception
+    def __ne__(self, value):
+        return not self.__eq__(value)
 class parseblockchain:
     def __init__(self,parseblocks):
         self.__parseblocks = np.empty(len(parseblocks),dtype=object)
@@ -215,7 +232,7 @@ class rootSystem:
         return np.dot(v2p,self.sym_matrix @ v1p)
     
     def split_e_bracket(self,hs,realword) -> bool:
-        weights = realword.weights - (self.delta * realword.weights[0])
+        weights = realword.degree - (self.delta * realword.degree[0])
         return np.dot(hs ,(self.sym_matrix @ weights[1:])) != 0
     def h_bracket(self,word:word) -> np.array:
         """Determines the bracketing of an imaginary word
@@ -284,6 +301,12 @@ class rootSystem:
             i.cofactorizationSplit = 0
             self.rootToWordDictionary[i.degree.tobytes()] = [i]
         self.baseRoots = rootSystem.get_base_roots(self.type,self.n)
+        self.__root_to_base_root_index = dict()
+        for i in range(len(self.baseRoots)):
+            self.__root_to_base_root_index[self.baseRoots[i].tobytes()] = i
+        self.__m_k_dict = dict()
+        self.__M_k_dict = dict()
+        self.__monotonicity_dict = dict()
         self.numberOfBaseRoots = len(self.baseRoots)
         self.cartan_matrix = rootSystem.get_cartan_matrix(self.type,self.n)
         self.delta = rootSystem.get_delta(self.type,self.n)
@@ -647,71 +670,124 @@ class rootSystem:
         maxWord  = self.minWord
         validBase = np.repeat(True,self.numberOfBaseRoots)
         kDelta = np.zeros(len(self.ordering),dtype=int)
-        lengthChecked = height
         i = self.baseRoots[0]
         iSum=0
-        while(iSum <= lengthChecked):
+        while(iSum < height):
             for baseWordIndex in range(self.numberOfBaseRoots):
                 if(not validBase[baseWordIndex]):
                     continue
                 i = self.baseRoots[baseWordIndex] + kDelta
                 iSum = sum(i)
-                if(iSum > lengthChecked):
+                if(iSum > height):
                     break
+                if(imaginary and ((iSum >= self.deltaHeight and height - iSum >= self.deltaHeight)
+                   or (not self.is_imaginary_height(iSum) and self.get_monotonicity(i) < 0))):
+                    #The left standard factor of SL_i(k\delta) has length greater than |(k-1)\delta|
+                    continue
+                if(self.is_imaginary_height(iSum) and iSum > self.deltaHeight):
+                    validBase[baseWordIndex] = False
+                    continue
                 j = combinations-i
                 words2 = self.__get_words(j)
                 if(len(words2) == 0):
                     validBase[baseWordIndex] = False
                     continue
-                lengthChecked = height - iSum
+                if(sum(kDelta) == 0 and not self.is_imaginary_height(sum(j))):
+                    validBase[self.__root_to_base_root_index[self.mod_delta(j)[0].tobytes()]] = False
                 eitherRootImaginary = (self.is_imaginary_height(iSum) or self.is_imaginary_height(height-iSum))
                 if(imaginary and eitherRootImaginary):
                     continue
-                words1 = self.__get_words(i)
-                for word1 in words1:
-                    for word2 in words2:
-                        if(word1< word2):
-                            (a,b) = (word1,word2)
-                        else:
-                            (a,b) = (word2,word1)
-                        if(not imaginary):
-                            #Checks to see if bracket is non-zero
-                            newWord = a+b
-                            if word.letter_list_cmp(newWord.string,maxWord.string) <= 0:
-                                continue
-                            if eitherRootImaginary and not self.e_bracket(newWord):
-                                continue
-                            maxWord = newWord
-                        if(imaginary):
-                            if(a.height > 1 and word.letter_list_cmp(a.string[a.cofactorizationSplit:],b.string) < 0):
-                                continue
-                            potentialOptions.append(a+b)
-                            continue
+                if eitherRootImaginary:
+                    word1 = self.__get_words(self.delta)[self.M_k(combinations) - 1]
+                    word2 = self.__get_words(combinations - self.delta)[0]
+                    validBase[self.__root_to_base_root_index[self.delta.tobytes()]] = False
+                    validBase[self.__root_to_base_root_index[self.mod_delta(combinations)[0].tobytes()]] = False
+                else:
+                    word1 = self.__get_words(i)[0]
+                    word2 = self.__get_words(j)[0]
+                if(word1< word2):
+                    (a,b) = (word1,word2)
+                else:
+                    (a,b) = (word2,word1)
+                if(not imaginary):
+                    #Checks to see if bracket is non-zero
+                    newWord = a+b
+                    if word.letter_list_cmp(newWord.string,maxWord.string) <= 0:
+                        continue
+                    maxWord = newWord
+                if(imaginary):
+                    #if(a.height > 1 and word.letter_list_cmp(a.string[a.cofactorizationSplit:],b.string) < 0):
+                    #    continue
+                    potentialOptions.append(a+b)
+                    continue
             kDelta+= self.delta
         if not imaginary:
             maxWord.cofactorizationSplit = len(self.costfac(maxWord)[0])
             self.rootToWordDictionary[combinations.tobytes()] = [maxWord]
         else:
-            potentialOptions.sort(reverse=True)
-            matrix = np.zeros((self.n,self.n), dtype = int)
-            liPotentialOptions = []
-            index = 0
-            row = 0
-            while(row < self.n):
-                potentialOptions[index].hs = self.h_bracket(potentialOptions[index])
-                matrix[row] = potentialOptions[index].hs
-                if(np.linalg.matrix_rank(matrix) == row+1):
-                    liPotentialOptions.append(potentialOptions[index])
-                    row+=1
-                index += 1
             if(height == self.deltaHeight):
-                self.__flipped_im_words = []
-                for i in liPotentialOptions:
-                    for j in range(1,self.deltaHeight):
-                        if(i[j].order_index == 0):
-                            self.__flipped_im_words.append(word(list(i[j:]) + list(i[:j]),degree=self.delta))
+                potentialOptions.sort(reverse=True)
+                matrix = np.zeros((self.n,self.n), dtype = int)
+                liPotentialOptions = []
+                index = 0
+                row = 0
+                while(row < self.n):
+                    potentialOptions[index].hs = self.h_bracket(potentialOptions[index])
+                    matrix[row] = potentialOptions[index].hs
+                    if(np.linalg.matrix_rank(matrix) == row+1):
+                        liPotentialOptions.append(potentialOptions[index])
+                        row+=1
+                    index += 1
+                if(height == self.deltaHeight):
+                    self.__flipped_im_words = []
+                    for i in liPotentialOptions:
+                        for j in range(1,self.deltaHeight):
+                            if(i[j].order_index == 0):
+                                self.__flipped_im_words.append(word(list(i[j:]) + list(i[:j]),degree=self.delta))
+                                break
+                self.rootToWordDictionary[combinations.tobytes()] = liPotentialOptions
+                self.__gen_m_k_M_k_dict()
+                self.__gen_monotonicity_dict()
+            else:
+                potentialOptions.sort(reverse=True)
+                liPotentialOptions = []
+                index = 0
+                for i in range(len(potentialOptions)):
+                    potentialOptions[i].hs = self.h_bracket(potentialOptions[i])
+                    left_cofac = self.letter_list_to_root(potentialOptions[i][potentialOptions[i].cofactorizationSplit:])
+                    if(self.is_imaginary_height(sum(left_cofac))):
+                        continue
+                    if(self.m_k(left_cofac) > index):
+                        liPotentialOptions.append(potentialOptions[i])
+                        index += 1
+                        if(index == self.n):
                             break
-            self.rootToWordDictionary[combinations.tobytes()] = liPotentialOptions
+                self.rootToWordDictionary[combinations.tobytes()] = liPotentialOptions
+
+    def __gen_monotonicity_dict(self):
+        for root in self.baseRoots[:-1]:
+            if(root[0] > 0):
+                continue
+            monotonicty = 0
+            word = self.SL(self.mod_delta(root)[0])[0]
+            delta_minus = self.SL(self.delta - self.mod_delta(root)[0])[0]
+            if(word > delta_minus):
+                monotonicty = -1
+            else:
+                monotonicty = 1
+            self.__monotonicity_dict[root.tobytes()] = monotonicty
+            self.__monotonicity_dict[(self.delta - root).tobytes()] = -monotonicty
+
+    def __gen_m_k_M_k_dict(self):
+        for root in self.baseRoots[:-1]:
+            if(root[0] > 0):
+                continue
+            convex_set = self.__imaginary_convex_set(root)
+            self.__m_k_dict[root.tobytes()] = convex_set[-1]
+            self.__m_k_dict[(self.delta - root).tobytes()] = convex_set[-1]
+            self.__M_k_dict[root.tobytes()] = convex_set[0]
+            self.__M_k_dict[(self.delta - root).tobytes()] = convex_set[0]
+
     def get_words_by_base(self):
         """Gets words grouped together by base word
         
@@ -720,21 +796,16 @@ class rootSystem:
         for i in self.baseRoots:
             returnarr.append(np.array(self.get_chain(i)))
         return np.array(returnarr)
-    def get_monotonicity(self, root,deltaIndex = 0,cheap=True):
+    def get_monotonicity(self, root,cached=True):
         """Gets monotonicity of a chain of words
         
         < 0 decreasing
         = 0 not monotone
         > 0 increasing
         """
-        if(cheap):
-            word = self.SL(self.mod_delta(root)[0])[0]
-            delta_minus = self.SL(self.delta - self.mod_delta(root)[0])[0]
-            if(word > delta_minus):
-                return -1
-            else:
-                return 1
-        self.generate_up_to_delta(2)
+        if(cached):
+            return self.__monotonicity_dict[self.mod_delta(root)[0].tobytes()]
+        self.generate_up_to_delta(1)
         words = self.get_chain(root)
         for j in range(1,len(words)):
             monotonicity = 0
@@ -763,19 +834,6 @@ class rootSystem:
             if(res == -1):
                 monotone_dec.append(i)
         return monotone_dec   
-    def check_monotonicity(self, filter:{'All', 'Increasing', 'Decreasing','None'}="All"):
-        """Filter for checking monotonicity of all words"""
-        returnarr = []
-        for i in self.get_base_roots()[:-1]:
-            monotonicity = self.get_monotonicity(i)
-            if(filter == 'None' and monotonicity != 0):
-                continue
-            if(filter == 'Increasing' and monotonicity != 1):
-                continue
-            if(filter == 'Decreasing' and monotonicity != -1):
-                continue
-            returnarr.append((self.__get_words(i)[0].degree,monotonicity))
-        return np.array(returnarr, dtype=object)
     def check_convexity(self,deltagen=2,word_convexity=False):
         """Checks convexity on the rootsystem"""
         self.generate_up_to_delta(deltagen)
@@ -1124,7 +1182,7 @@ class rootSystem:
                 count += 1
         return count
         
-    def get_periodicity(self, simpleRoot,slIndex:int = 0,kdelta:int = 3) -> int:
+    def periodicity(self, simpleRoot,slIndex:int = 0,kdelta:int = 2) -> int:
         """Returns the periodicity of a simple root in a rootsystem
         
         slIndex -- used in imaginary words
@@ -1141,6 +1199,13 @@ class rootSystem:
             if(topchain == secondchain):
                 return topchain
             self.generate_up_to_delta((chain[-1].height // self.deltaHeight) + 2)
+            
+    def roots_with_periodicity_n(self,n=1):
+        roots = []
+        for i in self.baseRoots[:-1]:
+            if self.periodicity(i) == n:
+                roots.append(i)
+        return roots
             
     def generate_up_to_height(self,height:int):
         """Generate all words in the rootsystem upto a certain height"""
@@ -1171,7 +1236,7 @@ class rootSystem:
         for l in letterList:
             arr[l.rootIndex] += 1
         return arr
-    def imaginary_convex_set(self,root):
+    def __imaginary_convex_set(self,root):
         word = self.SL(root)[0]
         imwords = self.SL(self.delta)
         base_root = (root-self.delta*root[0])[1:]
@@ -1185,14 +1250,16 @@ class rootSystem:
                 arr.append(i+1)
                 flag = True
             spanset[i] = w.hs
-            if(np.linalg.matrix_rank(spanset) <= i+1):
+            if(flag and np.linalg.matrix_rank(spanset) <= i+1):
                 return arr
             i+=1
         return arr
     def m_k(self,root):
-        return self.imaginary_convex_set(root)[-1]
+        self.generate_up_to_delta(1)
+        return self.__m_k_dict[self.mod_delta(root)[0].tobytes()]
     def M_k(self,root):
-        return self.imaginary_convex_set(root)[0]
+        self.generate_up_to_delta(1)
+        return self.__M_k_dict[self.mod_delta(root)[0].tobytes()]
     def W_set_compare(element1,element2):
         if(word.letter_list_cmp(element1[0] + element1[1],
                                 element2[0] + element2[1]) == 0):
@@ -1302,6 +1369,6 @@ class rootSystem:
     def verify_periodicity(self):
         conj_periodicities = self.conj_periodicity()
         for i in self.baseRoots[:-1]:
-            periodity = self.get_periodicity(i)
+            periodity = self.periodicity(i)
             if(conj_periodicities[tuple(i)] != periodity):
                 yield f"Conj: {conj_periodicities[tuple(i)]}, Actual: {periodity}"

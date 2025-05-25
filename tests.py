@@ -1,6 +1,10 @@
 import unittest
-from LyndonWords import *
+import LyndonWords
+import importlib
 import numpy
+importlib.reload(LyndonWords)
+from LyndonWords import *
+
 def toSet(lW:rootSystem):
     resultSet = set()
     for i in lW.rootToWordDictionary.values():
@@ -37,6 +41,11 @@ class TestStringMethods(unittest.TestCase):
         c = rootSystem(arr,'C')
         c.generate_up_to_height(3*c.deltaHeight)
         self.assertSetEqual(toSet(c),set(expected))
+    def test_m_k(self):
+        arr = [4,0,1,2,3]
+        c = rootSystem(arr,'C')
+        c.generate_up_to_delta(1)
+        self.assertEqual(c.m_k([0,1,0,0,0]),2)
     def test_C_Affine_2(self):
         arr = [3,0,1,2]
         expected = set(
