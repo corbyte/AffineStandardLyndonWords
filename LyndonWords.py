@@ -42,7 +42,7 @@ class word:
         self.degree = np.array(degree)
         self.height = sum(self.degree)
         self.degree.flags.writeable = False
-        self.cofactorizationSplit = None
+        self.cofactorizationSplit:int = -1
     def __len__(self):
         return self.height
     def __iter__(self):
@@ -80,6 +80,7 @@ class word:
         return not (self == other)
     def __add__(self,other):
         return word(np.concatenate((self.string,other.string),dtype=word),self.degree + other.degree) 
+    @staticmethod
     def letter_list_cmp(first,second):
         """comparision method for two words
         
@@ -151,6 +152,7 @@ class parseblock:
             return str(f"[im,{self.__index},{self.__repeat}]")
         if self.__type == 'pim':
             return str(f"[{self.__index},{self.__perm_index},{self.__repeat}]")
+        raise ValueError()
     def __len__(self):
         return self.__letter_arr.size
     def __eq__(self, value):
@@ -186,7 +188,7 @@ class letterOrdering:
     def __iter__(self):
         self.iterIndex = 0
         return self
-    def __next__(self) -> word:
+    def __next__(self) -> letter:
         if(self.iterIndex == len(self.order)):
             raise StopIteration
         temp = self.order[self.iterIndex]
@@ -219,7 +221,7 @@ class rootSystem:
         if(self.is_imaginary_height(A.height)):
             re = B
             im = A
-        elif(self.is_imaginary_height(B.height)):
+        elif(B is not None and self.is_imaginary_height(B.height)):
             re = A
             im = B
         else:
@@ -234,7 +236,7 @@ class rootSystem:
     def split_e_bracket(self,hs,realword) -> bool:
         weights = realword.degree - (self.delta * realword.degree[0])
         return np.dot(hs ,(self.sym_matrix @ weights[1:])) != 0
-    def h_bracket(self,word:word) -> np.array:
+    def h_bracket(self,word:word) -> np.ndarray:
         """Determines the bracketing of an imaginary word
         
         Returns a vector representing the weights of the h_i
@@ -317,6 +319,8 @@ class rootSystem:
         self.vectors_norm2 = rootSystem.basis_vector_norm2(self.type,self.n)
         self.sym_matrix = self.get_sym_matrix()
         self._maxWord:word  = self.SL(degreeGeneration(self.ordering[-1]))[0]
+        self.deltaGenned = 0
+    @staticmethod
     def get_base_roots(type,n):
         """Returns roots of height <= delta for a certain type and n"""
         if(type == 'A'):
@@ -333,7 +337,9 @@ class rootSystem:
             return rootSystem.F_roots()
         elif(type == 'G'):
             return rootSystem.G_roots()
-    def get_delta(type,n) -> np.array:
+        raise ValueError("Invalid Type")
+    @staticmethod
+    def get_delta(type,n) -> np.ndarray:
         """Returns delta for a certain type and n"""
         if(type == 'A'):
             return rootSystem.A_delta(n)
@@ -350,7 +356,8 @@ class rootSystem:
         elif(type == 'G'):
             return rootSystem.G_delta()
         raise ValueError("Incorrect value for type")
-    def A_roots(n) -> np.array:
+    @staticmethod
+    def A_roots(n:int) -> np.ndarray:
         size = n + 1
         arr = []
         for length in range(1,n+1):
@@ -362,7 +369,8 @@ class rootSystem:
         rootSystem.__gen_affine_base_roots(arr,rootSystem.A_delta(n))
         arr.sort(key = sum)
         return np.array(arr) 
-    def B_roots(n) -> np.array:
+    @staticmethod
+    def B_roots(n:int) -> np.ndarray:
         size = n+1
         arr = []
         for i in range(1,n+1):
@@ -403,7 +411,8 @@ class rootSystem:
         rootSystem.__gen_affine_base_roots(arr,rootSystem.B_delta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def C_roots(n) -> np.array:
+    @staticmethod
+    def C_roots(n:int) -> np.ndarray:
         size = n+1
         arr = []
         for i in range(n):
@@ -446,7 +455,8 @@ class rootSystem:
         rootSystem.__gen_affine_base_roots(arr,rootSystem.C_delta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def D_roots(n) -> np.array:
+    @staticmethod
+    def D_roots(n:int) -> np.ndarray:
         size = n+1
         arr = []
         for i in range(n):
@@ -487,7 +497,8 @@ class rootSystem:
         rootSystem.__gen_affine_base_roots(arr,rootSystem.D_delta(n))
         arr.sort(key = sum)
         return np.array(arr,dtype=int)
-    def E_roots(n,affine:bool=True) ->np.array:
+    @staticmethod
+    def E_roots(n:int,affine:bool=True) ->np.ndarray:
         arr = []
         roots  = []
         if(n==6):
@@ -541,7 +552,8 @@ class rootSystem:
             rootSystem.__gen_affine_base_roots(arr,rootSystem.E_delta(n))
         arr.sort(key = sum)
         return np.array(arr)
-    def F_roots(affine:bool=True) -> np.array:
+    @staticmethod
+    def F_roots(affine:bool=True) -> np.ndarray:
         arr = []
         for i in [[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1],[0,0,1,1],[0,1,1,1],
                   [0,1,2,2],[0,1,2,1],[1,1,1,1],[1,1,2,1],[1,2,2,1],[1,2,3,1],
@@ -554,7 +566,8 @@ class rootSystem:
             rootSystem.__gen_affine_base_roots(arr,rootSystem.F_delta())
         arr.sort(key = sum)
         return np.array(arr)
-    def G_roots(affine:bool=True)-> np.array:
+    @staticmethod
+    def G_roots(affine:bool=True)-> np.ndarray:
         arr = []
         for i in [[1,0],[0,1],[1,1],[1,2],[1,3],[2,3]]:
             if(affine):
@@ -564,7 +577,8 @@ class rootSystem:
             rootSystem.__gen_affine_base_roots(arr,rootSystem.G_delta())
         arr.sort(key = sum)
         return np.array(arr)
-    def __gen_affine_base_roots(arr,delta:np.array):
+    @staticmethod
+    def __gen_affine_base_roots(arr,delta:np.ndarray):
         """Generates the affine roots from the simple lie algebra
         
         Used in the get roots function"""
@@ -631,7 +645,7 @@ class rootSystem:
                         if(word.letter_list_cmp(rWord.string,wordToFactor.string[i:]) == 0):
                             return (lWord,rWord)
         return (None,None)
-    def __get_words(self, combination:np.array):
+    def __get_words(self, combination:np.ndarray):
         """Gets all words corresponding to a certain root"""
         return self.rootToWordDictionary.get(combination.tobytes(),[])
     def SL(self, combination):
@@ -642,10 +656,11 @@ class rootSystem:
                 self.generate_up_to_height(sum(combination))
                 ret = self.__get_words(np.array(combination, dtype=int))
             return ret
-        return []
-    def get_chain(self,root,min_delta = 2):
+        raise ValueError("Invalid combination")
+    def get_chain(self,root,min_delta = 0):
         """Gets the string of word weight, weight+\delta \cdots for all generated words"""
-        self.generate_up_to_delta(min_delta)
+        if(min_delta > 0):     
+            self.generate_up_to_delta(min_delta)
         if(self.is_imaginary_height(sum(root))):
             base_root = self.delta
         else:
@@ -661,11 +676,12 @@ class rootSystem:
     def is_imaginary_height(self,height:int):
         """Checks if a word has imaginary height"""
         return height % self.deltaHeight == 0
-    def __gen_word(self, combinations:np.array):
+    def __gen_word(self, combinations:np.ndarray):
         """Function called to generate a new word"""
         height = sum(combinations)
         if(height == 1):
             return
+        self.deltaGenned = self.mod_delta(combinations)[1]
         imaginary = self.is_imaginary_height(height)
         potentialOptions = []
         maxWord  = self.minWord
@@ -807,6 +823,7 @@ class rootSystem:
         if(cached):
             return self.__monotonicity_dict[self.mod_delta(root)[0].tobytes()]
         words = self.get_chain(root)
+        monotonicity=0
         for j in range(1,len(words)):
             monotonicity = 0
             if(words[j-1] < words[j]):
@@ -841,6 +858,8 @@ class rootSystem:
             if(len(w) > 1):
                 continue
             currentWord:word = w[0]
+            leftWord:word
+            rightWord:word
             for decomp in self.get_decompositions(currentWord.degree):
                 if(self.is_imaginary_height(sum(decomp[0])) or self.is_imaginary_height(sum(decomp[1]))):
                     if(not word_convexity):
@@ -923,26 +942,31 @@ class rootSystem:
                     else:
                         arr.append(k+j)
         return arr
-    def A_delta(n:int) -> np.array:
+    @staticmethod
+    def A_delta(n:int) -> np.ndarray:
         return np.ones(n+1,dtype=int)
-    def B_delta(n:int) -> np.array:
+    @staticmethod
+    def B_delta(n:int) -> np.ndarray:
         arr = np.repeat(2,n+1)
         arr[0] = 1
         arr[1] = 1
         return arr
-    def C_delta(n:int) -> np.array:
+    @staticmethod
+    def C_delta(n:int) -> np.ndarray:
         delta = np.repeat(2,n+1)
         delta[0] = 1
         delta[-1] = 1
         return delta
-    def D_delta(n:int) -> np.array:
+    @staticmethod
+    def D_delta(n:int) -> np.ndarray:
         delta = np.repeat(2,n+1)
         delta[0] =1
         delta[-1] = 1
         delta[-2] = 1
         delta[1] = 1
         return delta
-    def E_delta(n:int) -> np.array:
+    @staticmethod
+    def E_delta(n:int) -> np.ndarray:
         if(n == 6):
             return np.array([1,1,2,3,2,1,2],dtype=int)
         if(n == 7):
@@ -950,11 +974,14 @@ class rootSystem:
         if(n == 8):
             return np.array([1,2,3,4,5,6,4,2,3],dtype=int)
         raise ValueError("n must be 6,7,8")
-    def F_delta() -> np.array:
+    @staticmethod
+    def F_delta() -> np.ndarray:
         return np.array([1,2,3,4,2],dtype=int)
-    def G_delta() -> np.array:
+    @staticmethod
+    def G_delta() -> np.ndarray:
         return np.array([1,2,3],dtype=int)
-    def basis_vector_norm2(t:str, n:int) -> np.array:
+    @staticmethod
+    def basis_vector_norm2(t:str, n:int) -> np.ndarray:
         """Calculates the length squared of the root vectors"""
         t = t.upper()
         if(n<= 0):
@@ -1001,17 +1028,19 @@ class rootSystem:
                 return values
             else:
                 raise ValueError("Invalid n for Type G")
+        raise ValueError("Invalid Type")
     def get_sym_matrix(self):
         """Returns the symmetric cartan matrix"""
         diag = np.zeros((self.n,self.n),dtype=int)
         for i in range(self.n):
             diag[i,i] = self.vectors_norm2[i]
         return diag @ self.cartan_matrix
+    @staticmethod
     def print_format(words, formatfunc):
         """prints words given a format"""
         for word in words:
             print(formatfunc(word))
-    def parse_to_delta_format(self,parseWord:word):
+    def parse_to_delta_format(self,parseWord:word) -> list[word]:
         """returns word in terms of SL_i(\delta)
         
         The first number of the tuple represents i and the second,
@@ -1086,7 +1115,8 @@ class rootSystem:
         if(len(stack) > 0): 
             parsed_arr.append(parseblock(stack,'word'))
         return parseblockchain(parsed_arr)
-    def get_cartan_matrix(type:str,n:int):
+    @staticmethod
+    def get_cartan_matrix(type:str,n:int) -> np.ndarray:
         """returns the cartan matrix for a give type and n"""
         if(n <= 0):
             raise ValueError("Invalid Parameters")
@@ -1175,6 +1205,7 @@ class rootSystem:
                 if(word.letter_list_cmp(rword.string,minword.string) < 0):
                     minword = rword
         return minword
+    @staticmethod
     def __count_chain(parsed_delta_format):
         count = 0
         for i in parsed_delta_format:
@@ -1220,6 +1251,8 @@ class rootSystem:
             k += 1
     def generate_up_to_delta(self,k:int):
         """Generates all words in the rootsytsem upto a certain k\delta"""
+        if(self.deltaGenned >= k):
+            return
         self.generate_up_to_height(self.deltaHeight*k)
     def contains_root(self,root):
         """Check if a root in is the rootsystem"""
@@ -1258,6 +1291,7 @@ class rootSystem:
     def M_k(self,root):
         self.generate_up_to_delta(1)
         return self.__M_k_dict[self.mod_delta(root)[0].tobytes()]
+    @staticmethod
     def W_set_compare(element1,element2):
         if(word.letter_list_cmp(element1[0] + element1[1],
                                 element2[0] + element2[1]) == 0):
