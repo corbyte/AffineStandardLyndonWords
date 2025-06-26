@@ -216,3 +216,19 @@ def periodicity_ell_1(rootSys:rootSystem):
         if parse_block[0] not in left_parts:
             return str(rootSys.ordering,i)
         return None
+    
+def check_irr_chains_conj(rootSys:rootSystem,k=3):
+    irrchains = rootSys.irr_chains()
+    for chain in irrchains:
+        w = rootSys.SL(k*rootSys.delta + chain)[0]
+        if(len(rootSys.parse_to_delta_format(w)) != 2):
+            return (chain,str(rootSys.ordering))
+    mod = 0
+    for w in rootSys.get_chain(rootSys.delta,k)[rootSys.n:]:
+        p = len(w) // rootSys.deltaHeight
+        chain_word = rootSys.SL((p-1)*rootSys.delta + irrchains[mod])[0]
+        if word.letter_list_cmp(chain_word.string,w.string) != -1:
+            return (p,mod+1,w,str(rootSys.ordering))
+        mod += 1
+        mod %= rootSys.n
+    return 

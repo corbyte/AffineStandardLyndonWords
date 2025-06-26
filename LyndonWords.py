@@ -2,13 +2,15 @@ import numpy as np
 from functools import cmp_to_key
 import networkx
 import matplotlib.pyplot as plt
+from torch import sort
 
 class letter:
     """Class for letters of words"""
     order_index:int
     rootIndex:int
-    def __init__(self,rootIndex:int=0):
+    def __init__(self,rootIndex:int=0,order_index:int=0):
         self.rootIndex = rootIndex
+        self.order_index=order_index
     def set_index(self, i:int):
         self.order_index = i
     def __str__(self):
@@ -125,7 +127,9 @@ class word:
         """returns the word without commas as a string"""
         return ''.join(str(i) for i in self.string)
 class parseblock:
-    def __init__(self,wordArray,blocktype:{'word','im','pim'},index = 0,repeat=1,perm_index=0):
+    def __init__(self,wordArray,blocktype:str,index = 0,repeat=1,perm_index=0):
+        if blocktype not in ['word','im','pim']:
+            raise ValueError("blocktype must be either 'word','im', or 'pim'")
         self.__letter_arr = np.array(wordArray,dtype=object)
         self.__type = blocktype
         self.__repeat = repeat
@@ -174,9 +178,11 @@ class parseblockchain:
         return self.__parseblocks[i]
 class letterOrdering:
     """Class used to contain the ordering of letters in a RootSystem"""
-    def __init__(self, letterOrdering):
-        letterOrdering = [letter(i) for i in letterOrdering]
-        self.order:list[letter] = letterOrdering
+    def __init__(self, letterOrdering:list[int]):
+        letter_convert = []
+        for i in range(len(letterOrdering)):
+            letter_convert.append(letter(letterOrdering[i],i))
+        self.order:list[letter] = letter_convert
         for i in range(len(letterOrdering)):
             self.order[i].order_index = i
     def __len__(self):
@@ -289,7 +295,7 @@ class rootSystem:
         self.n = len(ordering)-1
         self.ordering:letterOrdering = letterOrdering(ordering)
         self.rootToWordDictionary:dict = {}
-        self.minWord:word = None
+        self.minWord:word = word([],[])
         def degreeGeneration(letter):
             #Generates simple root vectors
             arr = np.zeros(len(self.ordering),dtype=int)
@@ -306,8 +312,8 @@ class rootSystem:
         self.__root_to_base_root_index = dict()
         for i in range(len(self.baseRoots)):
             self.__root_to_base_root_index[self.baseRoots[i].tobytes()] = i
-        self.__m_k_dict = dict()
-        self.__M_k_dict = dict()
+        self.__m_k_dict:dict[bytes,int] = dict()
+        self.__M_k_dict:dict[bytes,int] = dict()
         self.__monotonicity_dict = dict()
         self.__baseRoot_set = set()
         self.__baseRoot_set.update([i.tobytes() for i in self.baseRoots])
@@ -590,10 +596,10 @@ class rootSystem:
     def costfac(self,wordToFactor:word):
         """Returns the costandard factorization of a word as a tuple of 2 words"""
         if(wordToFactor.height == 1):
-            return (wordToFactor,None)
+            raise ValueError("word must be of height > 1")
         degree = np.copy(wordToFactor.degree)
         degree[wordToFactor.string[0].rootIndex] -= 1
-        splitLetter = None
+        splitLetter = letter()
         for i in self.ordering:
             if(degree[i.rootIndex] != 0):
                 splitLetter = i
@@ -630,7 +636,7 @@ class rootSystem:
             if(leftWord is None):
                 continue
             return (leftWord,rightWord)
-        return (None,None)
+        raise RuntimeError("costfac function not returning")
     def standfac(self,wordToFactor:word):
         """Returns the standard factorization of a word as a tuple of 2 words"""
         if(wordToFactor.height == 1):
@@ -648,7 +654,7 @@ class rootSystem:
     def __get_words(self, combination:np.ndarray):
         """Gets all words corresponding to a certain root"""
         return self.rootToWordDictionary.get(combination.tobytes(),[])
-    def SL(self, combination):
+    def SL(self, combination) -> list[word]:
         """Gets all words corresponding to a certain root"""
         if(self.contains_root(combination)):
             ret = self.__get_words(np.array(combination, dtype=int))
@@ -657,7 +663,7 @@ class rootSystem:
                 ret = self.__get_words(np.array(combination, dtype=int))
             return ret
         raise ValueError("Invalid combination")
-    def get_chain(self,root,min_delta = 0):
+    def get_chain(self,root,min_delta = 0) -> list[word]:
         """Gets the string of word weight, weight+\delta \cdots for all generated words"""
         if(min_delta > 0):     
             self.generate_up_to_delta(min_delta)
@@ -858,8 +864,8 @@ class rootSystem:
             if(len(w) > 1):
                 continue
             currentWord:word = w[0]
-            leftWord:word
-            rightWord:word
+            leftWord:word = self.minWord
+            rightWord:word = self.minWord
             for decomp in self.get_decompositions(currentWord.degree):
                 if(self.is_imaginary_height(sum(decomp[0])) or self.is_imaginary_height(sum(decomp[1]))):
                     if(not word_convexity):
@@ -1045,7 +1051,7 @@ class rootSystem:
         
         The first number of the tuple represents i and the second,
         the number of times it occurs in a row
-        Want to fix to instead of a string it retuns a list of word objects with dleta parts
+        Want to fix to instead of a string it retuns a list of word objects with delta parts
         """
         retarr = []
         deltaWords = self.__get_words(self.delta)
@@ -1343,7 +1349,14 @@ class rootSystem:
                         G.add_edge(tuple(i),tuple(k))
                         break
         return G
-    def get_simple_roots(self,G):
+    def irr_chains(self,increasing=True) -> list:
+        
+        """
+            Returns the increasing or decreasing irreduciable chains for a given rootSystem object.
+            
+            The order in which they are returned are in decreasing order of m_1(\cdot)
+        """
+        G = self.chain_graph(increasing)
         topological_order = list(networkx.topological_sort(G))
         
         # Identify nodes at the same level in topological order
@@ -1362,7 +1375,10 @@ class rootSystem:
             if level not in nodes_by_level:
                 nodes_by_level[level] = []
             nodes_by_level[level].append(node)
-        return list(nodes_by_level.values())[0]
+        irr_chains = list(nodes_by_level.values())[0]
+        func = lambda x: self.m_k(x)
+        irr_chains.sort(key=func)
+        return irr_chains
     def conj_periodicity(self):
         M_dict = dict()
         periodicity_dict = dict()
