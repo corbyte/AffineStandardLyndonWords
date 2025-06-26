@@ -248,8 +248,9 @@ class rootSystem:
         Returns a vector representing the weights of the h_i
         
         It will be of length n"""
-        a = self.costfac(word)[0]
-        if(a is None):
+        try:
+            a = self.costfac(word)[0]
+        except:
             return np.zeros(self.n,dtype=int)
         word.cofactorizationSplit = a.height
         newA = (a.degree - (self.delta *a.degree[0]))
