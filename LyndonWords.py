@@ -2,7 +2,6 @@ import numpy as np
 from functools import cmp_to_key
 import networkx
 import matplotlib.pyplot as plt
-from torch import sort
 
 class letter:
     """Class for letters of words"""
