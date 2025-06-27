@@ -309,6 +309,7 @@ class rootSystem:
             i.cofactorizationSplit = 0
             self.rootToWordDictionary[i.degree.tobytes()] = [i]
         self.baseRoots = rootSystem.get_base_roots(self.type,self.n)
+        self.baseRoots.flags.writeable = False
         self.__root_to_base_root_index = dict()
         for i in range(len(self.baseRoots)):
             self.__root_to_base_root_index[self.baseRoots[i].tobytes()] = i
@@ -326,8 +327,10 @@ class rootSystem:
         self.sym_matrix = self.get_sym_matrix()
         self._maxWord:word  = self.SL(degreeGeneration(self.ordering[-1]))[0]
         self.deltaGenned = 0
+        self.__irr_chains:np.ndarray = np.empty(0,dtype=int)
+        self.matrix_to_irr_chain_base:np.ndarray = np.zeros((self.n,self.n),dtype=int)
     @staticmethod
-    def get_base_roots(type,n):
+    def get_base_roots(type,n) -> np.ndarray:
         """Returns roots of height <= delta for a certain type and n"""
         if(type == 'A'):
             return rootSystem.A_roots(n)
@@ -593,7 +596,7 @@ class rootSystem:
                 break
             arr.append(delta - i)
         arr.append(delta)
-    def costfac(self,wordToFactor:word):
+    def costfac(self,wordToFactor:word) -> tuple[word,word]:
         """Returns the costandard factorization of a word as a tuple of 2 words"""
         if(wordToFactor.height == 1):
             raise ValueError("word must be of height > 1")
@@ -637,10 +640,10 @@ class rootSystem:
                 continue
             return (leftWord,rightWord)
         raise RuntimeError("costfac function not returning")
-    def standfac(self,wordToFactor:word):
+    def standfac(self,wordToFactor:word) -> tuple[word,word]:
         """Returns the standard factorization of a word as a tuple of 2 words"""
         if(wordToFactor.height == 1):
-            return (wordToFactor,None)
+            raise ValueError("word must be of height > 1")
         degree = np.copy(wordToFactor.degree)
         for i in range(wordToFactor.height-1,0,-1):
             degree[wordToFactor.string[i].rootIndex] -= 1
@@ -650,7 +653,7 @@ class rootSystem:
                     for rWord in self.__get_words(wordToFactor.degree - degree):
                         if(word.letter_list_cmp(rWord.string,wordToFactor.string[i:]) == 0):
                             return (lWord,rWord)
-        return (None,None)
+        raise RuntimeError("standfac function not returning")
     def __get_words(self, combination:np.ndarray):
         """Gets all words corresponding to a certain root"""
         return self.rootToWordDictionary.get(combination.tobytes(),[])
@@ -1046,7 +1049,7 @@ class rootSystem:
         """prints words given a format"""
         for word in words:
             print(formatfunc(word))
-    def parse_to_delta_format(self,parseWord:word) -> list[word]:
+    def parse_to_delta_format(self,parseWord:word) -> list:
         """returns word in terms of SL_i(\delta)
         
         The first number of the tuple represents i and the second,
@@ -1349,14 +1352,8 @@ class rootSystem:
                         G.add_edge(tuple(i),tuple(k))
                         break
         return G
-    def irr_chains(self,increasing=True) -> list:
-        
-        """
-            Returns the increasing or decreasing irreduciable chains for a given rootSystem object.
-            
-            The order in which they are returned are in decreasing order of m_1(\cdot)
-        """
-        G = self.chain_graph(increasing)
+    def __gen_irr_chains(self):
+        G = self.chain_graph()
         topological_order = list(networkx.topological_sort(G))
         
         # Identify nodes at the same level in topological order
@@ -1378,7 +1375,22 @@ class rootSystem:
         irr_chains = list(nodes_by_level.values())[0]
         func = lambda x: self.m_k(x)
         irr_chains.sort(key=func)
-        return irr_chains
+        self.__irr_chains = np.asarray(irr_chains,dtype=int)
+        self.__irr_chains.flags.writeable = False
+
+    def irr_chains(self,increasing=True) -> np.ndarray:
+        
+        """
+            Returns the increasing or decreasing irreduciable chains for a given rootSystem object.
+            
+            The order in which they are returned are in decreasing order of m_1(\cdot)
+        """
+        if(len(self.__irr_chains) == 0):
+            self.__gen_irr_chains()
+        if increasing:
+            return self.__irr_chains
+        else:
+            return self.delta - self.__irr_chains
     def conj_periodicity(self):
         M_dict = dict()
         periodicity_dict = dict()
