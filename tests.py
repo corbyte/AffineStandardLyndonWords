@@ -210,5 +210,6 @@ class TestStringMethods(unittest.TestCase):
     def test_F_Affine_1(self):
         arr = [1,2,3,4,0]
         r = rootSystem(arr,'F')
+    #TODO: Write test cases for M_prime,u_i functions
 if __name__ == '__main__':
     unittest.main()
