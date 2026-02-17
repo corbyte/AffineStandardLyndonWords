@@ -232,3 +232,74 @@ def check_irr_chains_conj(rootSys:rootSystem,k=3):
         mod += 1
         mod %= rootSys.n
     return 
+def check_chunk_conj(rootSys):
+    #TODO:
+    rootSys.generate_up_to_delta(rootSys.max_u_i())
+    pass
+def count_chunks(rootSys:rootSystem,root):
+    word = rootSys.SL(root)[0]
+    l = rootSys.parse_to_delta_format(word)
+    s = 0
+    for i in l:
+        if type(i) is str:
+            continue
+        s += i[1]
+    return 
+def imaginary_left_stand_conj(rootSys:rootSystem):
+    imwords = rootSys.SL(rootSys.delta)
+    for i in range(len(imwords)):
+        arr = np.zeros(rootSys.n,dtype=int)
+        arr[i] = 1
+        left_stand = rootSys.standfac(imwords[i])[0]
+        new_basis = rootSys.old_to_new_basis(left_stand.degree)
+        if(sum(new_basis) == 1):
+            continue
+        if not rootSys.contains_root(rootSys.new_to_old_basis(new_basis - arr)):
+            return (rootSys,i)
+    return None
+def connectivity_conj(rootSys:rootSystem):
+    rootSys.generate_up_to_delta(1)
+    count = 0
+    for i in rootSys.get_monotone_decreasing():
+        if rootSys.m_k(i) == rootSys.M_prime_k(i):
+            count += 1
+    if count > 1:
+        return rootSys
+    return None
+def non_unique_splitting_conj(rootSys:rootSystem):
+    imwords = rootSys.SL(rootSys.delta)
+    for i in range(1,len(imwords)):
+        if rootSys.costfac(imwords[i])[0] == rootSys.standfac(imwords[i])[0]:
+            return rootSys
+    return None
+def rs_rs_conj(rootSys:rootSystem):
+    inc_roots = rootSys.get_monotone_increasing()
+    inc_roots.sort(key = lambda x: rootSys.SL(x)[0],reverse=True)
+    im_left_stand = [rootSys.standfac(i)[0].degree for i in rootSys.SL(rootSys.delta)]
+    j = 1
+    for i in range(len(inc_roots)):
+        if np.all(inc_roots[i] == im_left_stand[j]):
+            try:
+                rs1 = rootSys.standfac(rootSys.SL(inc_roots[i-1])[0])[1]
+                rs2 = rootSys.SL(rootSys.delta - im_left_stand[j])[0]
+            except:
+                return (str(rootSys.ordering),j)
+            if( rs1 != rs2):
+                return (str(rootSys.ordering),j)
+            j+=1
+    return None
+def check_weakly_dec_conj(rootSys:rootSystem):
+    if rootSys.delta[rootSys.ordering[0].rootIndex] == 1:
+        return None
+    inc_roots = rootSys.get_monotone_increasing()
+    inc_roots.sort(key = lambda x: rootSys.SL(x)[0],reverse=True)
+    im_left_stand = [rootSys.standfac(i)[0].degree for i in rootSys.SL(rootSys.delta)]
+    j = 1
+    for i in range(len(inc_roots)):
+        if np.all(inc_roots[i] == im_left_stand[j]):
+            right = rootSys.SL(rootSys.delta - inc_roots[i-1])[0].degree
+            if not rootSys.is_weakly_decreasing(right):
+                return (str(rootSys.ordering),j)
+            j+=1
+        if j == rootSys.n:
+            return None

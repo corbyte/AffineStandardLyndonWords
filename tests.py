@@ -211,5 +211,8 @@ class TestStringMethods(unittest.TestCase):
         arr = [1,2,3,4,0]
         r = rootSystem(arr,'F')
     #TODO: Write test cases for M_prime,u_i functions
+    def test_conversion_to_new_basis(self):
+        rootSys = rootSystem([2,0,7,1,3,4,5,6],'E')
+        self.assertTrue(np.all(rootSys.old_to_new_basis(rootSys.irr_chains()[0]) == np.array([1,0,0,0,0,0,0],dtype=int)))
 if __name__ == '__main__':
     unittest.main()

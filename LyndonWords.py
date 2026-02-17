@@ -318,6 +318,7 @@ class rootSystem:
         self.__m_k_dict:dict[bytes,int] = dict()
         self.__M_k_dict:dict[bytes,int] = dict()
         self.__M_prime_k_dict:dict[bytes,int] = dict()
+        self.__s_dict:dict[bytes,int] = dict()
         self.__monotonicity_dict = dict()
         self.__u_i_dict:dict[bytes,dict[int,np.ndarray]] = dict()
         self.__baseRoot_set = set()
@@ -767,10 +768,12 @@ class rootSystem:
                         row+=1
                     index += 1
                 self.rootToWordDictionary[combinations.tobytes()] = liPotentialOptions
-                self.__gen_m_k_M_k_dict()
+                #self.__gen_m_k_M_k_dict()
                 self.__gen_monotonicity_dict()
-                self.__gen_M_prime_dict()
-                self.__gen_u_i_dict()
+                #self.__gen_irr_chains()
+                #self.__gen_M_prime_dict()
+                #self.__gen_u_i_dict()
+                #self.__gen_s_dict()
             else:
                 potentialOptions.sort(reverse=True)
                 liPotentialOptions = []
@@ -810,41 +813,40 @@ class rootSystem:
         convertedRoots = [x[0] for x in pairs]
         roots = [x[1] for x in pairs]
         imwords = self.SL(self.delta)
-        for i in convertedRoots:
-            self.__u_i_dict[i.tobytes()] = dict()
-        for i in range(len(convertedRoots)):
-            croot = convertedRoots[i]
-            if sum(convertedRoots[i]) > 0:
+        for root_index in convertedRoots:
+            self.__u_i_dict[root_index.tobytes()] = dict()
+        for root_index in range(len(convertedRoots)):
+            croot = convertedRoots[root_index]
+            if sum(convertedRoots[root_index]) > 0:
                 continue
-            baseWord = self.SL(roots[i])[0]
+            baseWord = self.SL(roots[root_index])[0]
             if sum(croot) == -1:
-                for u_i in range(self.n):
-                    if(baseWord > imwords[u_i]):
-                        self.__u_i_dict[croot.tobytes()][u_i] = roots[i]
-            else:
-                for u_i in range(self.n):
-                    if(baseWord < imwords[u_i]):
+                for index in range(self.n):
+                    if(baseWord > imwords[index] and self.M_prime_k(croot) <= index):
+                        self.__u_i_dict[croot.tobytes()][index] = roots[root_index]
+                continue
+            for index in range(self.n):
+                if(baseWord < imwords[index] or self.M_prime_k(croot) > index):
+                    continue
+                max_root = roots[root_index]
+                for j in range(root_index):
+                    right = convertedRoots[j]
+                    left = croot - convertedRoots[j]
+                    left_u_i = self.__u_i_dict.get(left.tobytes())
+                    if(left_u_i is None):
                         continue
-                    max_root = roots[i]
-                    for j in range(i):
-                        right = convertedRoots[j]
-                        left = croot - convertedRoots[j]
-                        left_u_i = self.__u_i_dict.get(left.tobytes())
-                        if(left_u_i is None):
-                            continue
-                        left_u_i = self.__u_i_dict[left.tobytes()].get(u_i)
-                        if( left_u_i is None):
-                            continue
-                        right_u_i = self.__u_i_dict.get(right.tobytes())
-                        if(right_u_i is None):
-                            continue
-                        right_u_i = self.__u_i_dict[right.tobytes()].get(u_i)
-                        if(right_u_i is None):
-                            continue
-                        left_M_prime = self.__M_prime_k_dict[left.tobytes()]
-                        if(sum(max_root) < sum(left_u_i)+ sum(right_u_i)):
-                            max_root = left_u_i + right_u_i
-                    self.__u_i_dict[croot.tobytes()][u_i] = max_root            
+                    left_u_i = self.__u_i_dict[left.tobytes()].get(index)
+                    if(left_u_i is None):
+                        continue
+                    right_u_i = self.__u_i_dict.get(right.tobytes())
+                    if(right_u_i is None):
+                        continue
+                    right_u_i = self.__u_i_dict[right.tobytes()].get(index)
+                    if(right_u_i is None):
+                        continue
+                    if(sum(max_root) < sum(left_u_i)+ sum(right_u_i)):
+                        max_root = left_u_i + right_u_i
+                self.__u_i_dict[croot.tobytes()][index] = max_root            
 
     def __gen_m_k_M_k_dict(self):
         for root in self.baseRoots[:-1]:
@@ -864,34 +866,40 @@ class rootSystem:
         pairs.sort(key=lambda x: -sum(x[0]))
         convertedRoots = [x[0] for x in pairs]
         roots = [x[1] for x in pairs]
+        if(not self.__M_k_dict):
+            self.__gen_m_k_M_k_dict()
+        base_M_k = np.array([self.__M_k_dict[i.tobytes()] for i in self.__irr_chains])
         for i in range(len(convertedRoots)):
             croot = convertedRoots[i]
             if sum(convertedRoots[i]) > 0:
                 continue
-            if sum(croot) == -1:
-                self.__M_prime_k_dict[croot.tobytes()] = self.__M_k_dict[roots[i].tobytes()]
-                self.__M_prime_k_dict[(-croot).tobytes()] = self.__M_k_dict[roots[i].tobytes()]
-
-            else:
-                min_M_prime = self.__M_k_dict[roots[i].tobytes()]
-                for j in range(i):
-                    left = croot - convertedRoots[j]
-                    if(max(left) > 0):
-                        continue
-                    flag = False
-                    for k in range(j):
-                        if np.all(left == convertedRoots[k]):
-                            flag = True
-                            break
-                    if not flag:
-                        continue
-                    left_M_prime = self.__M_prime_k_dict[left.tobytes()]
-                    if(left_M_prime < min_M_prime):
-                        min_M_prime = left_M_prime
-                self.__M_prime_k_dict[croot.tobytes()] = min_M_prime
-                self.__M_prime_k_dict[(-croot).tobytes()] = min_M_prime
-                        
-        
+            min_M_prime = self.n
+            for j in range(self.n):
+                if(croot[j] < 0 and base_M_k[j] < min_M_prime):
+                    min_M_prime = base_M_k[j] 
+            self.__M_prime_k_dict[croot.tobytes()] = min_M_prime
+            self.__M_prime_k_dict[(-croot).tobytes()] = min_M_prime
+    def __gen_s_dict(self):
+        dec_chains =  self.get_monotone_decreasing()
+        convertedChains = [self.old_to_new_basis(r) for r in dec_chains]
+        pairs = list(zip(convertedChains,dec_chains))
+        pairs.sort(key=lambda x: -sum(x[0]))
+        convertedChains = [x[0] for x in pairs]
+        base_M_1 = np.zeros(self.n,dtype=int)
+        if( not self.__M_prime_k_dict):
+            self.__gen_M_prime_dict()
+        for i in range(self.n):
+            arr = np.zeros(self.n,dtype=int)
+            arr[i] = 1
+            base_M_1[i] = self.__M_prime_k_dict[arr.tobytes()]
+        for i in range(len(convertedChains)):
+            chain = convertedChains[i]
+            M_prime = self.__M_prime_k_dict[chain.tobytes()]
+            count = 0
+            for j in range(self.n):
+                count += chain[j] * int(base_M_1[j] == M_prime)
+            self.__s_dict[chain.tobytes()] = count
+    
     def get_words_by_base(self):
         """Gets words grouped together by base word
         
@@ -1375,22 +1383,72 @@ class rootSystem:
             i+=1
         return arr
     def m_k(self,root):
-        self.generate_up_to_delta(1)
+        if(not self.__m_k_dict):
+            self.__gen_m_k_M_k_dict()
         return self.__m_k_dict[self.mod_delta(root)[0].tobytes()]
     def M_k(self,root):
-        self.generate_up_to_delta(1)
+        if(not self.__M_k_dict):
+            self.__gen_m_k_M_k_dict()
         return self.__M_k_dict[self.mod_delta(root)[0].tobytes()]
     def M_prime_k(self,root):
-        self.generate_up_to_delta(1)
+        if(not self.__M_prime_k_dict):
+            self.__gen_M_prime_dict()
         return self.__M_prime_k_dict[self.old_to_new_basis(root).tobytes()]
     def u_i(self,root,i=0):
-        self.generate_up_to_delta(1)
+        if(not self.__u_i_dict):
+            self.__gen_u_i_dict()
+        i_is_0 = False
         if i == 0:
+            i_is_0 = True
             i = self.M_prime_k(root)
         new_basis = self.old_to_new_basis(root)
         if(self.__u_i_dict.get(new_basis.tobytes()) is None):
             raise BaseException("Invalid root entered")
-        return self.__u_i_dict[new_basis.tobytes()].get(i)
+        result = self.__u_i_dict[new_basis.tobytes()].get(i)
+        if(i_is_0 and result is None):
+            raise Exception
+        return result
+    def max_u_i(self):
+        self.generate_up_to_delta(1)
+        m = 0
+        for i in self.get_monotone_decreasing():
+            u = self.u_i(i)
+            if(u is not None):
+                if sum(u) > m:
+                    m = sum(u)
+        return 1+ (m//self.deltaHeight)
+    def s(self,root):
+        if not self.__s_dict:
+            self.__gen_s_dict()
+        chain = self.old_to_new_basis(root)
+        return self.__s_dict.get(chain.tobytes())
+
+    def get_sdcs(self):
+        dec_chains = self.get_monotone_decreasing()
+        l = []
+        for i in dec_chains:
+            flag = True
+            for j in self.get_decompositions(i):
+                if self.get_monotonicity(j[0]) == self.get_monotonicity(j[1]) == -1:
+                    flag = False
+                    break
+            if(flag):
+                l.append(i)
+        return l
+    
+    def is_weakly_decreasing(self,root):
+        base = self.mod_delta(root)[0]
+        for i in self.get_decompositions(base + self.delta):
+            s0 = sum(i[0])
+            s1 = sum(i[1])
+            if self.is_imaginary_height(s0) or self.is_imaginary_height(s1):
+                continue
+            if self.get_monotonicity(i[0]) != self.get_monotonicity(i[1]):
+                continue
+            if s0 < self.deltaHeight and s1 < self.deltaHeight:
+                return False
+        return True
+        
     @staticmethod
     def W_set_compare(element1,element2):
         if(word.letter_list_cmp(element1[0] + element1[1],
@@ -1471,9 +1529,9 @@ class rootSystem:
         self.__irr_chains.flags.writeable = False
         func = lambda x: (x - self.delta*x[0])[1:]
         converted_irr_chains = np.apply_along_axis(func,1,self.__irr_chains).T
-        self.__matrix_new_to_old_basis = converted_irr_chains.astype(int)
+        self.__matrix_new_to_old_basis = converted_irr_chains
         self.__matrix_new_to_old_basis.flags.writeable = False
-        self.__matrix_old_to_new_basis = np.linalg.inv(converted_irr_chains).astype(int)
+        self.__matrix_old_to_new_basis = np.rint(np.linalg.inv(converted_irr_chains))
         self.__matrix_old_to_new_basis.flags.writeable = False
 
     def irr_chains(self,increasing=True) -> np.ndarray:
@@ -1535,6 +1593,8 @@ class rootSystem:
     def new_to_old_basis(self,chain) -> np.ndarray:
         if(len(self.__irr_chains) == 0):
             self.__gen_irr_chains()
-        chain = self.mod_delta(chain)[0]
-        converted = (chain - self.delta * chain[0])[1:]
-        return self.__matrix_new_to_old_basis @ converted
+        res = self.__matrix_new_to_old_basis @ chain
+        if min(res) < 0:
+            return self.delta - np.insert(res,0,0)
+        else:
+            return np.insert(res,0,0)
